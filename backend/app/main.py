@@ -38,13 +38,13 @@ logger = logging.getLogger("caipiao")
 
 STATIC_DIR = Path(settings.static_dir)
 
-DEFAULT_ADMIN_PASSWORD = "TANGlidong24ban@"
-
-
 def _security_selfcheck() -> None:
     """启动时体检，把不安全配置明确喊出来（不改行为，只提示）。"""
-    if settings.admin_password == DEFAULT_ADMIN_PASSWORD:
-        logger.warning("安全提示：仍在用默认管理员密码，请登录后台「修改我的密码」或改 deploy/.env 的 ADMIN_PASSWORD")
+    if not settings.admin_password:
+        logger.info(
+            "未设置 ADMIN_PASSWORD：首次启动会自动生成随机管理员密码并打印到日志；"
+            "账号已存在时忽略此设置"
+        )
     if not settings.cookie_secure:
         logger.warning("安全提示：COOKIE_SECURE=false，生产走 HTTPS 时应置 true（Cookie Secure + HSTS）")
     if settings.enable_docs:

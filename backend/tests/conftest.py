@@ -32,7 +32,7 @@ def _configure(tmp_db: Path) -> Iterator[None]:
     settings.read_only = False
     settings.admin_token = ""
     settings.admin_username = "admin"
-    settings.admin_password = "TANGlidong24ban@"
+    settings.admin_password = "TestAdmin!2345"
     settings.inbound_rate_per_min = 1_000_000
     settings.heavy_rate_per_min = 1_000_000
     settings.ai_max_calls_per_hour = 1_000
@@ -133,7 +133,7 @@ def client() -> Iterator[TestClient]:
         yield c
 @pytest.fixture(scope="session")
 def admin_creds() -> dict:
-    return {"username": "admin", "password": "TANGlidong24ban@"}
+    return {"username": "admin", "password": "TestAdmin!2345"}
 
 
 @pytest.fixture()

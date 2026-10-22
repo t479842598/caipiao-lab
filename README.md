@@ -109,7 +109,7 @@ cd backend
 | `APP_PORT` | 8787 | 监听端口 |
 | `DB_PATH` | ../data/lottery.db | SQLite 路径，容器内 /data/lottery.db |
 | `ADMIN_USERNAME` | admin | 首次启动创建的管理员账号 |
-| `ADMIN_PASSWORD` | （见 .env.example） | 首次启动创建的管理员密码，**上线前务必改掉** |
+| `ADMIN_PASSWORD` | 空 | 留空则首次启动**自动生成 20 位随机密码并打印到日志**；账号已存在时忽略 |
 | `ADMIN_TOKEN` | 空 | 可选静态令牌，给脚本调用；留空表示只用账号密码 |
 | `SECRET_KEY` | 空 | 会话与 API Key 加密密钥；留空自动生成 `data/data-secret.key` |
 | `SESSION_TTL_HOURS` | 72 | 登录会话有效期 |

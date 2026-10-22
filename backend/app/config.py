@@ -26,8 +26,10 @@ class Settings(BaseSettings):
     secret_key: str = ""              # 为空则首启随机生成并写 data/.secret
     session_ttl_hours: int = 72       # 登录会话有效期
     cookie_secure: bool = False       # 生产走 HTTPS 时置 true
+    # 首次启动创建的管理员。admin_password 留空时自动生成随机密码并打印到日志，
+    # 避免把可用的默认口令写进代码（公开仓库里等于公开发后台）。
     admin_username: str = "admin"
-    admin_password: str = "TANGlidong24ban@"
+    admin_password: str = ""
     admin_token: str = ""             # 兼容旧部署的静态令牌（可选，留空即仅账号登录）
     login_max_fails: int = 5          # 连续失败次数
     login_lock_minutes: int = 15      # 触发后锁定时长
