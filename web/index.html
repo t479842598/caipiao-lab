@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>福彩数据与预测平台</title>
+    <meta name="description" content="福利彩票全彩种历史数据、统计走势、概率预测与回测分析" />
+    <meta name="theme-color" content="#08090d" />
+    <script>
+      (function () {
+        try {
+          var KEY = "caipiao.theme";
+          var pref = localStorage.getItem(KEY) || "auto";
+          if (pref !== "light" && pref !== "dark") pref = "auto";
+          var mode = pref;
+          if (pref === "auto") {
+            var m = 0;
+            try {
+              var parts = new Intl.DateTimeFormat("en-GB", {
+                timeZone: "Asia/Shanghai",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false,
+              }).format(new Date());
+              var sp = parts.split(":");
+              m = parseInt(sp[0], 10) * 60 + parseInt(sp[1], 10);
+            } catch (e) {
+              var d = new Date();
+              m = ((d.getUTCHours() + 8) % 24) * 60 + d.getUTCMinutes();
+            }
+            mode = m >= 390 && m < 1080 ? "light" : "dark";
+          }
+          document.documentElement.setAttribute("data-theme", mode);
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute("content", mode === "light" ? "#f4f6f9" : "#08090d");
+        } catch (e) {
+          document.documentElement.setAttribute("data-theme", "dark");
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

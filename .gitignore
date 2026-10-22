@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+
+# Node
+node_modules/
+web/dist/
+
+# 构建产物（由 make build 生成）
+backend/app/static/assets/
+backend/app/static/index.html
+
+# 数据与备份
+data/*.db
+data/*.db-shm
+data/*.db-wal
+data/data-secret.key
+backup/
+!data/.gitkeep
+
+# 环境变量（含令牌，别提交）
+deploy/.env
+.env
+.env.local
+
+# 构建缓存
+web/tsconfig.tsbuildinfo
+backend/caipiao_lab.egg-info/
+*.log
+
+# macOS
+.DS_Store

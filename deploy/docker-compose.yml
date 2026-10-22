@@ -1,0 +1,23 @@
+services:
+  caipiao:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: caipiao-lab:latest
+    container_name: caipiao-lab
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      APP_HOST: 0.0.0.0
+      APP_PORT: "8787"
+      DB_PATH: /data/lottery.db
+    volumes:
+      - ./data:/data
+    ports:
+      - "127.0.0.1:8787:8787"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

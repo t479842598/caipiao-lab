@@ -1,0 +1,162 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink-950: #08090d;
+  --color-ink-900: #0c0e14;
+  --color-ink-850: #11141c;
+  --color-ink-800: #161a24;
+  --color-ink-700: #1e2431;
+  --color-ink-600: #2a3242;
+  --color-ink-500: #3b4557;
+  --color-fog-400: #7b8798;
+  --color-fog-300: #a3aebd;
+  --color-fog-200: #cdd4de;
+  --color-fog-100: #e9eef5;
+  --color-ball-red: #e8455c;
+  --color-ball-blue: #3b82f6;
+  --color-jade: #2dd4a7;
+  --color-amber-glow: #f5a524;
+  --font-mono: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+}
+
+/* 深色（夜间 18:00 - 06:30 北京时间）为默认 */
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+  --page-bg: #08090d;
+  --page-fg: #cdd4de;
+  --glow-red: rgba(232, 69, 92, 0.09);
+  --glow-blue: rgba(59, 130, 246, 0.08);
+  --card-a: rgba(22, 26, 36, 0.92);
+  --card-b: rgba(12, 14, 20, 0.92);
+  --card-border: #1e2431;
+  --scroll-thumb: #2a3242;
+  --shell-rule: rgba(30, 36, 49, 0.8);
+}
+
+/* 浅色（日间 06:30 - 18:00 北京时间） */
+[data-theme="light"] {
+  color-scheme: light;
+  --color-ink-950: #f4f6f9;
+  --color-ink-900: #ffffff;
+  --color-ink-850: #ffffff;
+  --color-ink-800: #eef2f7;
+  --color-ink-700: #dde3ec;
+  --color-ink-600: #cbd4e1;
+  --color-ink-500: #64748b;
+  --color-fog-400: #5b6779;
+  --color-fog-300: #414c5e;
+  --color-fog-200: #16202e;
+  --color-fog-100: #0b1220;
+  --color-ball-red: #d92a44;
+  --color-ball-blue: #2563eb;
+  --color-jade: #0c8f6f;
+  --color-amber-glow: #b45309;
+  --page-bg: #f4f6f9;
+  --page-fg: #16202e;
+  --glow-red: rgba(217, 42, 68, 0.07);
+  --glow-blue: rgba(37, 99, 235, 0.07);
+  --card-a: rgba(255, 255, 255, 0.96);
+  --card-b: rgba(249, 251, 253, 0.96);
+  --card-border: #e2e8f0;
+  --scroll-thumb: #cbd4e1;
+  --shell-rule: rgba(226, 232, 240, 0.9);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(1200px 600px at 15% -10%, var(--glow-red), transparent 60%),
+    radial-gradient(900px 500px at 90% 0%, var(--glow-blue), transparent 55%),
+    var(--page-bg);
+  background-attachment: fixed;
+  color: var(--page-fg);
+  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.35s ease, color 0.35s ease;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scroll-thumb);
+  border-radius: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@utility card {
+  background: linear-gradient(180deg, var(--card-a), var(--card-b));
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  transition: background 0.35s ease, border-color 0.35s ease;
+}
+
+@utility num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 全站宽度容器：手机 100%、桌面 1312px、2K 1536px、超宽 1888px */
+.shell {
+  width: 100%;
+  margin-inline: auto;
+  max-width: 82rem;
+  padding-inline: 0.75rem;
+}
+@media (min-width: 768px) {
+  .shell {
+    padding-inline: 1rem;
+  }
+}
+@media (min-width: 1536px) {
+  .shell {
+    max-width: 96rem;
+    padding-inline: 1.5rem;
+  }
+}
+@media (min-width: 1920px) {
+  .shell {
+    max-width: 118rem;
+  }
+}
+
+.ball {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 0.9rem;
+  letter-spacing: -0.02em;
+}
+
+.ball-red {
+  background: radial-gradient(circle at 32% 28%, #ff7a8a, #d92a44 70%);
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(232, 69, 92, 0.35), inset 0 -2px 6px rgba(0, 0, 0, 0.25);
+}
+
+.ball-blue {
+  background: radial-gradient(circle at 32% 28%, #7cb4ff, #2563eb 70%);
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(59, 130, 246, 0.35), inset 0 -2px 6px rgba(0, 0, 0, 0.25);
+}
+
+.ball-sm {
+  width: 1.6rem;
+  height: 1.6rem;
+  font-size: 0.72rem;
+}

@@ -1,0 +1,48 @@
+# /etc/systemd/system/caipiao-lab.service
+# 安装：cp deploy/caipiao-lab.service /etc/systemd/system/ && systemctl daemon-reload
+#        systemctl enable --now caipiao-lab
+# 日志：journalctl -u caipiao-lab -f
+[Unit]
+Description=Caipiao Lab (福彩数据与预测平台)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# 专用系统用户（部署脚本会创建；不要用 www-data，Alibaba Cloud Linux 上没有）
+User=caipiao
+Group=caipiao
+WorkingDirectory=/opt/caipiao-lab/backend
+EnvironmentFile=/opt/caipiao-lab/deploy/.env
+ExecStart=/opt/caipiao-lab/backend/.venv/bin/python -m app.main
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# ---------- 加固（systemd-analyze security 实测 1.7 OK）----------
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictNamespaces=true
+LockPersonality=true
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+AmbientCapabilities=
+UMask=0027
+ReadWritePaths=/opt/caipiao-lab/data /opt/caipiao-lab/backup
+
+[Install]
+WantedBy=multi-user.target
