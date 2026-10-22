@@ -212,21 +212,39 @@ function DrawDetail({ draw }: { draw: Draw }) {
       </div>
       {draw.prizes.length > 0 ? (
         <div>
-          <div className="mb-1 text-[11px] uppercase tracking-wider text-fog-400">奖级明细</div>
+          <div className="mb-1 flex items-center justify-between">
+            <span className="text-[11px] uppercase tracking-wider text-fog-400">奖级明细</span>
+            {draw.prizes.some((p) => !p.type_num && !p.type_money) && (
+              <span className="text-[10px] text-fog-500">注数为 0 表示该档空缺</span>
+            )}
+          </div>
           <table className="w-full text-[11px]">
             <tbody>
-              {draw.prizes.map((p, i) => (
-                <tr key={i} className="border-t border-ink-700/60">
-                  <td className="py-1.5 pr-2 text-fog-300">{p.type}</td>
-                  <td className="num py-1.5 pr-2 text-right text-fog-400">{p.type_num ?? "—"} 注</td>
-                  <td className="num py-1.5 text-right text-fog-200">{p.type_money ? money(p.type_money) : "—"}</td>
-                </tr>
-              ))}
+              {draw.prizes.map((p, i) => {
+                // 单档 0 注 0 元是真实情况（头奖空缺、选十中十无人中），
+                // 用「空缺」而不是「0 注 / —」来表达，避免看起来像数据错误
+                const empty = !p.type_num && !p.type_money;
+                return (
+                  <tr key={i} className="border-t border-ink-700/60">
+                    <td className="py-1.5 pr-2 text-fog-300">{p.type}</td>
+                    <td className="num py-1.5 pr-2 text-right text-fog-400">
+                      {empty ? "空缺" : `${p.type_num ?? "—"} 注`}
+                    </td>
+                    <td className="num py-1.5 text-right text-fog-200">
+                      {empty ? "—" : p.type_money ? money(p.type_money) : "—"}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       ) : (
-        <div className="text-[11px] text-fog-400">{draw.content || "该彩种官方未公布奖级明细"}</div>
+        <div className="rounded-lg border border-ink-700/60 px-3 py-2 text-[11px] text-fog-400">
+          {draw.game_code === "3d"
+            ? "官方源未提供 3D 的奖级明细（仅公布开奖号码与销量），可前往中彩网查看当期公告。"
+            : draw.content || "该彩种官方未公布奖级明细"}
+        </div>
       )}
     </div>
   );

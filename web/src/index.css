@@ -8,6 +8,10 @@
   --color-ink-700: #1e2431;
   --color-ink-600: #2a3242;
   --color-ink-500: #3b4557;
+  /* fog-500 是辅助/最弱文字层级，比 fog-400 再暗一档。
+     之前 12 处引用但 @theme 里没定义，Tailwind 生成了无效类名，
+     这些文字颜色一直回退成继承值，视觉层级丢失。 */
+  --color-fog-500: #59657a;
   --color-fog-400: #7b8798;
   --color-fog-300: #a3aebd;
   --color-fog-200: #cdd4de;
@@ -44,6 +48,7 @@
   --color-ink-700: #dde3ec;
   --color-ink-600: #cbd4e1;
   --color-ink-500: #64748b;
+  --color-fog-500: #7b8798;
   --color-fog-400: #5b6779;
   --color-fog-300: #414c5e;
   --color-fog-200: #16202e;

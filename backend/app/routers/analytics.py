@@ -34,8 +34,19 @@ def frequency(
 ) -> FrequencyOut:
     _check(game, ball)
     data = load_ball_data(db, game, ball)
-    return FrequencyOut(game=game, ball=ball, window=window, total_draws=data.n,
-                        items=frequency_table(data, window))
+    spec = GAMES[game]
+    # 该球种每期开出几个（红球 6、蓝球 1、3D 3、快乐8 20），用于算理论期望
+    ball_spec = spec.red if ball in ("red", "ordered") else spec.blue
+    per_draw = ball_spec.count if ball_spec else 0
+    return FrequencyOut(
+        game=game,
+        ball=ball,
+        window=window,
+        total_draws=data.n,
+        per_draw_count=per_draw,
+        domain_size=data.size,
+        items=frequency_table(data, window),
+    )
 
 
 @router.get("/{game}/omission", response_model=OmissionOut)

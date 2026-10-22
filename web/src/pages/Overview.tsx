@@ -4,14 +4,27 @@ import { useAsync } from "../lib/hooks";
 import { useGame } from "../lib/store";
 import { Balls } from "../components/Balls";
 import { Badge, Button, Card, CardTitle, Empty, ErrorNote, Spinner } from "../components/ui";
-import { dateShort, gameName, money, weekdayLabel } from "../lib/format";
+import { dateShort, gameName, money, timeShort, weekdayLabel } from "../lib/format";
 
 export default function Overview({ games }: { games: Game[] }) {
   const { game, setGame } = useGame();
   const nav = useNavigate();
   const recent = useAsync(() => api.draws(game, { page: 1, page_size: 8 }), [game]);
+  const sync = useAsync(() => api.syncStatus(), []);
 
   const totalDraws = games.reduce((sum, g) => sum + g.draw_count, 0);
+
+  // 首页统计卡全部走真实数据，不再写死「官方」「开奖后 12 分钟」
+  const lastRun = sync.data?.last_runs?.[0];
+  const nextJob = sync.data?.next_jobs?.[0];
+  const syncEnabled = sync.data?.enabled ?? false;
+  const lastSyncLabel = lastRun?.finished_at
+    ? timeShort(lastRun.finished_at)
+    : lastRun?.started_at
+      ? timeShort(lastRun.started_at) + "（进行中）"
+      : "暂无记录";
+  const lastSyncStatus = lastRun?.status ?? "";
+  const nextRunLabel = nextJob?.next_run ? timeShort(nextJob.next_run) : "未排期";
 
   return (
     <div className="flex flex-col gap-4">
@@ -27,14 +40,33 @@ export default function Overview({ games }: { games: Game[] }) {
           <div className="mt-0.5 text-[11px] text-fog-400">双色球 / 3D / 七乐彩 / 快乐8</div>
         </div>
         <div className="card p-4">
-          <div className="text-[11px] uppercase tracking-wider text-fog-400">数据源</div>
-          <div className="mt-1 text-2xl font-semibold text-jade">官方</div>
-          <div className="mt-0.5 text-[11px] text-fog-400">中彩网公开接口 + 备用源</div>
+          <div className="text-[11px] uppercase tracking-wider text-fog-400">最近同步</div>
+          <div
+            className={
+              "mt-1 text-lg font-semibold " +
+              (lastSyncStatus === "success"
+                ? "text-jade"
+                : lastSyncStatus === "failed"
+                  ? "text-ball-red"
+                  : "text-fog-200")
+            }
+          >
+            {lastSyncStatus === "success"
+              ? "成功"
+              : lastSyncStatus === "failed"
+                ? "失败"
+                : lastSyncStatus === "running"
+                  ? "进行中"
+                  : "—"}
+          </div>
+          <div className="num mt-0.5 text-[11px] text-fog-400">{lastSyncLabel}</div>
         </div>
         <div className="card p-4">
           <div className="text-[11px] uppercase tracking-wider text-fog-400">自动同步</div>
-          <div className="mt-1 text-2xl font-semibold text-fog-200">开奖后 12 分钟</div>
-          <div className="mt-0.5 text-[11px] text-fog-400">按各彩种开奖日历定时拉取</div>
+          <div className={"mt-1 text-lg font-semibold " + (syncEnabled ? "text-fog-200" : "text-amber-glow")}>
+            {syncEnabled ? "已启用" : "已关闭"}
+          </div>
+          <div className="num mt-0.5 text-[11px] text-fog-400">下次 {nextRunLabel}</div>
         </div>
       </div>
 

@@ -78,6 +78,10 @@ class FrequencyOut(BaseModel):
     ball: str
     window: int
     total_draws: int
+    # 每期开出球数与号码域大小，前端用它算理论期望（total_draws * per_draw_count / domain_size），
+    # 不能在前端写死 6/33 —— 3D 是 3/10、七乐彩 7/30、快乐8 20/80。
+    per_draw_count: int = 0
+    domain_size: int = 0
     items: list[FrequencyItem] = Field(default_factory=list)
 
 

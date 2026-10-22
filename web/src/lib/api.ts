@@ -448,9 +448,15 @@ export const api = {
   latest: (game: string) => request<Draw>(`/draws/${game}/latest/one`),
 
   frequency: (game: string, window = 100, ball = "red") =>
-    request<{ game: string; ball: string; window: number; total_draws: number; items: FrequencyItem[] }>(
-      `/analytics/${game}/frequency${qs({ window, ball })}`,
-    ),
+    request<{
+      game: string;
+      ball: string;
+      window: number;
+      total_draws: number;
+      per_draw_count: number;
+      domain_size: number;
+      items: FrequencyItem[];
+    }>(`/analytics/${game}/frequency${qs({ window, ball })}`),
   omission: (game: string, limit = 0, ball = "red") =>
     request<{ game: string; ball: string; items: OmissionItem[] }>(`/analytics/${game}/omission${qs({ limit, ball })}`),
   trend: (game: string, periods = 30, ball = "red") =>

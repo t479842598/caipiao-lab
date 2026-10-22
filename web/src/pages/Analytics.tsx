@@ -3,11 +3,15 @@ import { api } from "../lib/api";
 import { useAsync } from "../lib/hooks";
 import { useGame } from "../lib/store";
 import { EChart, axisStyle, baseGrid, tooltipStyle, useChartColors } from "../components/EChart";
-import { Badge, Button, Card, CardTitle, Empty, ErrorNote, NumberField, Spinner } from "../components/ui";
+import { Badge, Button, Card, CardTitle, Empty, ErrorNote, NumberField, Spinner, cx } from "../components/ui";
 import { gameName, pct } from "../lib/format";
 import type { EChartsCoreOption } from "echarts/core";
 
 type Tab = "frequency" | "omission" | "trend" | "distribution" | "randomness";
+type BallKind = "red" | "blue";
+
+/** 有蓝球的彩种才能切球种：双色球（蓝球）、七乐彩（特别号）。 */
+const GAMES_WITH_BLUE = new Set(["ssq", "qlc"]);
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "frequency", label: "号码频率" },
@@ -20,9 +24,14 @@ const TABS: { key: Tab; label: string }[] = [
 export default function Analytics() {
   const { game } = useGame();
   const [tab, setTab] = useState<Tab>("frequency");
+  const [ball, setBall] = useState<BallKind>("red");
   const [window, setWindow] = useState(100);
   const [periods, setPeriods] = useState(40);
   const [omissionLimit, setOmissionLimit] = useState(0);
+
+  // 切到没有蓝球的彩种时自动回到红球，避免请求 404
+  const hasBlue = GAMES_WITH_BLUE.has(game);
+  const activeBall: BallKind = hasBlue ? ball : "red";
 
   return (
     <div className="flex flex-col gap-4">
@@ -44,24 +53,52 @@ export default function Analytics() {
         <div className="flex items-center gap-2">
           <span className="text-[11px] text-fog-400">彩种</span>
           <Badge tone="info">{gameName(game)}</Badge>
+          {hasBlue && tab !== "distribution" && tab !== "randomness" && (
+            <div className="flex items-center gap-0.5 rounded-lg border border-ink-700 bg-ink-900/70 p-0.5">
+              {(["red", "blue"] as BallKind[]).map((k) => (
+                <button
+                  key={k}
+                  onClick={() => setBall(k)}
+                  className={cx(
+                    "rounded-md px-2 py-1 text-[11px] transition-colors",
+                    activeBall === k ? "bg-ink-600 text-fog-100" : "text-fog-400 hover:text-fog-200",
+                  )}
+                >
+                  {k === "red" ? (game === "qlc" ? "基本号" : "红球") : game === "qlc" ? "特别号" : "蓝球"}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
       {tab === "frequency" && (
-        <FrequencyPanel game={game} window={window} setWindow={setWindow} />
+        <FrequencyPanel game={game} ball={activeBall} window={window} setWindow={setWindow} />
       )}
       {tab === "omission" && (
-        <OmissionPanel game={game} limit={omissionLimit} setLimit={setOmissionLimit} />
+        <OmissionPanel game={game} ball={activeBall} limit={omissionLimit} setLimit={setOmissionLimit} />
       )}
-      {tab === "trend" && <TrendPanel game={game} periods={periods} setPeriods={setPeriods} />}
+      {tab === "trend" && (
+        <TrendPanel game={game} ball={activeBall} periods={periods} setPeriods={setPeriods} />
+      )}
       {tab === "distribution" && <DistributionPanel game={game} window={window} setWindow={setWindow} />}
       {tab === "randomness" && <RandomnessPanel game={game} />}
     </div>
   );
 }
 
-function FrequencyPanel({ game, window, setWindow }: { game: string; window: number; setWindow: (v: number) => void }) {
-  const data = useAsync(() => api.frequency(game, window), [game, window]);
+function FrequencyPanel({
+  game,
+  ball,
+  window,
+  setWindow,
+}: {
+  game: string;
+  ball: BallKind;
+  window: number;
+  setWindow: (v: number) => void;
+}) {
+  const data = useAsync(() => api.frequency(game, window, ball), [game, window, ball]);
   const c = useChartColors();
 
   const option = useMemo<EChartsCoreOption>(() => {
@@ -117,11 +154,22 @@ function FrequencyPanel({ game, window, setWindow }: { game: string; window: num
     };
   }, [data.data, c]);
 
+  // 理论期望 = 期数 × 每期开出球数 / 号码域大小。
+  // 后端返回 per_draw_count / domain_size，不能在前端写死 6/33。
+  const expectedPerNumber =
+    data.data && data.data.domain_size > 0
+      ? (data.data.total_draws * data.data.per_draw_count) / data.data.domain_size
+      : 0;
+
   return (
     <Card>
       <CardTitle
-        title="号码频率"
-        sub={data.data ? "样本 " + data.data.total_draws + " 期，理论期望 " + (data.data.total_draws * 6 / 33).toFixed(2) + " 次/号" : "红球出现次数与理论值偏差"}
+        title={ball === "blue" ? "号码频率（蓝球/特别号）" : "号码频率"}
+        sub={
+          data.data
+            ? `样本 ${data.data.total_draws} 期，每期 ${data.data.per_draw_count} 个号 / 共 ${data.data.domain_size} 个号码域，理论期望 ${expectedPerNumber.toFixed(2)} 次/号`
+            : "出现次数与理论值偏差"
+        }
         right={<NumberField label="统计期数" value={window} onChange={setWindow} min={10} max={2000} width="w-24" />}
       />
       {data.loading ? <Spinner /> : data.error ? <ErrorNote message={data.error} onRetry={data.reload} /> : (
@@ -175,8 +223,18 @@ function FrequencyPanel({ game, window, setWindow }: { game: string; window: num
   );
 }
 
-function OmissionPanel({ game, limit, setLimit }: { game: string; limit: number; setLimit: (v: number) => void }) {
-  const data = useAsync(() => api.omission(game, limit), [game, limit]);
+function OmissionPanel({
+  game,
+  ball,
+  limit,
+  setLimit,
+}: {
+  game: string;
+  ball: BallKind;
+  limit: number;
+  setLimit: (v: number) => void;
+}) {
+  const data = useAsync(() => api.omission(game, limit, ball), [game, limit, ball]);
   const c = useChartColors();
 
   const option = useMemo<EChartsCoreOption>(() => {
@@ -248,8 +306,18 @@ function OmissionPanel({ game, limit, setLimit }: { game: string; limit: number;
   );
 }
 
-function TrendPanel({ game, periods, setPeriods }: { game: string; periods: number; setPeriods: (v: number) => void }) {
-  const data = useAsync(() => api.trend(game, periods), [game, periods]);
+function TrendPanel({
+  game,
+  ball,
+  periods,
+  setPeriods,
+}: {
+  game: string;
+  ball: BallKind;
+  periods: number;
+  setPeriods: (v: number) => void;
+}) {
+  const data = useAsync(() => api.trend(game, periods, ball), [game, periods, ball]);
   const c = useChartColors();
 
   const option = useMemo<EChartsCoreOption>(() => {

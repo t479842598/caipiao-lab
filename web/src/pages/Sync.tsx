@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ApiError, api } from "../lib/api";
 import { useAsync } from "../lib/hooks";
 import { useAuth } from "../lib/auth";
 import { Badge, Button, Card, CardTitle, Empty, ErrorNote, Spinner } from "../components/ui";
 import { gameName } from "../lib/format";
+import { useSyncProgress } from "../lib/useSyncProgress";
 
 const STATUS_TONE: Record<string, "good" | "warn" | "bad" | "neutral"> = {
   success: "good",
@@ -19,6 +20,21 @@ export default function Sync() {
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+
+  // 有彩种在同步时才开 SSE，跑完自动断开，避免空占连接
+  const anyRunning = useMemo(
+    () => Object.values(status.data?.running ?? {}).some(Boolean),
+    [status.data],
+  );
+  const progress = useSyncProgress(anyRunning || busy !== null);
+
+  // 每次有彩种同步完成，刷新状态与供应商健康度（后端已落库）
+  useEffect(() => {
+    if (!progress.lastDoneAt) return;
+    status.reload();
+    providers.reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [progress.lastDoneAt]);
 
   async function guard(key: string, fn: () => Promise<unknown>) {
     setBusy(key);
@@ -63,19 +79,47 @@ export default function Sync() {
       )}
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 2xl:gap-4">
-        {(Object.entries(status.data?.counts ?? {}) as [string, number][]).map(([code, n]) => (
-          <div key={code} className="card p-3 md:p-4">
-            <div className="flex items-center justify-between gap-1">
-              <span className="truncate text-xs text-fog-300">{gameName(code)}</span>
-              {status.data?.running?.[code] ? <Badge tone="warn">同步中</Badge> : <Badge tone="good">就绪</Badge>}
+        {(Object.entries(status.data?.counts ?? {}) as [string, number][]).map(([code, n]) => {
+          const live = progress.byGame[code];
+          const running = status.data?.running?.[code] || live?.status === "running";
+          return (
+            <div key={code} className="card p-3 md:p-4">
+              <div className="flex items-center justify-between gap-1">
+                <span className="truncate text-xs text-fog-300">{gameName(code)}</span>
+                {running ? <Badge tone="warn">同步中</Badge> : <Badge tone="good">就绪</Badge>}
+              </div>
+              <div className="num mt-1.5 text-xl font-semibold text-fog-200 md:text-2xl">
+                {n.toLocaleString("zh-CN")}
+              </div>
+              <div className="text-[11px] text-fog-400">已收录期数</div>
+              {live && (
+                <div className="mt-1.5 text-[10px] text-fog-500">
+                  {live.status === "running" ? (
+                    <span className="num">
+                      第 {live.page}/{live.pages || "?"} 页 · 抓 {live.fetched} · 新增{" "}
+                      <span className="text-jade">{live.inserted}</span>
+                    </span>
+                  ) : live.status === "done" ? (
+                    <span className="num text-jade">
+                      完成 · 新增 {live.inserted} · 更新 {live.updated}
+                    </span>
+                  ) : live.status === "skipped" ? (
+                    <span>{live.reason ?? "已跳过"}</span>
+                  ) : (
+                    <span className="text-ball-red">失败</span>
+                  )}
+                </div>
+              )}
             </div>
-            <div className="num mt-1.5 text-xl font-semibold text-fog-200 md:text-2xl">
-              {n.toLocaleString("zh-CN")}
-            </div>
-            <div className="text-[11px] text-fog-400">已收录期数</div>
-          </div>
-        ))}
+          );
+        })}
       </div>
+
+      {progress.connected && anyRunning && (
+        <div className="rounded-lg border border-jade/25 bg-jade/5 px-3 py-2 text-[11px] text-jade">
+          实时进度已连接（SSE）
+        </div>
+      )}
 
       <Card>
         <CardTitle
@@ -127,6 +171,53 @@ export default function Sync() {
             <Spinner label="请求已提交，后台执行中" />
           </div>
         )}
+
+        {Object.keys(progress.byGame).length > 0 && (
+          <div className="mt-3 flex flex-col gap-2 border-t border-ink-700/60 pt-3">
+            <div className="text-[11px] uppercase tracking-wider text-fog-400">
+              实时进度 {progress.connected ? "· 已连接" : "· 等待中"}
+            </div>
+            {Object.values(progress.byGame)
+              .sort((a, b) => b.at - a.at)
+              .map((p) => {
+                const pct =
+                  p.pages > 0 ? Math.min(100, Math.round((p.page / p.pages) * 100)) : p.status === "done" ? 100 : 0;
+                return (
+                  <div key={p.game} className="rounded-lg border border-ink-700/70 bg-ink-900/40 px-3 py-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                      <span className="text-fog-200">{gameName(p.game)}</span>
+                      <span className="num text-fog-400">
+                        {p.status === "running"
+                          ? `第 ${p.page}/${p.pages || "?"} 页 · ${pct}%`
+                          : p.status === "done"
+                            ? `完成 · 新增 ${p.inserted}`
+                            : p.status === "skipped"
+                              ? (p.reason ?? "已跳过")
+                              : "失败"}
+                      </span>
+                    </div>
+                    <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-ink-700">
+                      <div
+                        className={
+                          "h-full rounded-full transition-all duration-300 " +
+                          (p.status === "failed"
+                            ? "bg-ball-red"
+                            : p.status === "skipped"
+                              ? "bg-ink-500"
+                              : "bg-jade")
+                        }
+                        style={{ width: pct + "%" }}
+                      />
+                    </div>
+                    {p.errors && p.errors.length > 0 && (
+                      <div className="mt-1 text-[10px] text-ball-red">{p.errors.join(" | ")}</div>
+                    )}
+                  </div>
+                );
+              })}
+          </div>
+        )}
+
         {err && (
           <div className="mt-3">
             <ErrorNote message={err} />

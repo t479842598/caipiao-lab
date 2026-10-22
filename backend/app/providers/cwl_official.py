@@ -133,15 +133,21 @@ class CwlOfficialProvider(BaseProvider):
         else:
             numbers = {"red": [p.zfill(spec.red.pad) for p in red_raw], "blue": [p.zfill(spec.blue.pad) for p in blue_raw] if spec.blue else []}
 
+        # 官方对 3D 等彩种返回的是 7 个空壳奖级（typenum/typemoney 都是空串），
+        # 早期版本照单全收，把 None 写进 Numeric 列后变成 0，
+        # 结果期次详情页显示「0 注 / —」，看起来像 bug。
+        # 这里直接丢弃完全空白的奖级：有号码数或奖金任一项才保留。
         prizes: list[dict[str, Any]] = []
         for grade in row.get("prizegrades") or []:
-            num = grade.get("typenum")
-            money = grade.get("typemoney")
+            type_num = _to_int(grade.get("typenum"))
+            type_money = _to_float(grade.get("typemoney"))
+            if not type_num and not type_money:
+                continue
             prizes.append(
                 {
                     "type": str(grade.get("type") or ""),
-                    "type_num": _to_int(num),
-                    "type_money": _to_float(money),
+                    "type_num": type_num,
+                    "type_money": type_money,
                 }
             )
 
