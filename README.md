@@ -19,9 +19,10 @@
 | 预测 | 6 种引擎：均匀基线 / 频率 / 遗漏 / 马尔可夫 / 贝叶斯平滑 / 梯度提升树 + 多模型集成；返回注数 1–100 可配 |
 | 回测 | 滚动窗口（严格防未来信息泄漏）、命中数 vs 随机基线、TOP-K 命中率、logloss / Brier、逐期明细 |
 | AI 解读 | 统计模型选号 + 大模型解读：支持 OpenAI / DeepSeek / Moonshot / 智谱 / 通义 / Ollama / 自定义；用户可在前台提交自己的 Key，管理员审核后启用 |
-| 票夹 | 保存预测票、记录落地情况、统计命中；按登录用户 / 浏览器设备隔离 |
+| 票夹 | 保存预测票、记录落地情况、统计命中；登录后跨设备同步，游客按设备隔离 |
+| 账号 | 普通用户自助注册登录（role=user），票夹随账号同步，注册时自动迁移本设备游客票 |
 | 管理后台 | 账号密码登录、运行状态、账号增删改、审计日志、登录会话吊销、AI 供应商审核 |
-| 移动端 | 底部 Tab 导航 + 抽屉菜单，表格在手机上自动切成卡片 |
+| 移动端 | 底部 Tab 导航（总览/历史/预测/AI/更多）+ 抽屉菜单，表格在手机上自动切成卡片 |
 | 运维 | 单端口自托管（FastAPI 托管前端产物）、会话 + CSRF、入站限流、安全响应头、只读模式、SQLite 热备份脚本 |
 
 ---
@@ -56,7 +57,7 @@ caipiao-lab/
 │   │   ├── jobs/              sync_job（同步服务）+ scheduler（定时任务）
 │   │   ├── scripts/sync.py    命令行同步入口
 │   │   └── static/            前端构建产物（make build 生成）
-│   └── tests/                 pytest 133 例（含防未来信息泄漏、鉴权、AI 离线用例）
+│   └── tests/                 pytest 174 例（含防未来信息泄漏、鉴权、兑奖、注册、AI 离线用例）
 ├── web/                       Vite + React 前端源码
 ├── deploy/                    Dockerfile / docker-compose / nginx.conf / systemd unit / start.sh
 ├── scripts/backup.sh          SQLite 热备份 + 轮转
@@ -73,7 +74,9 @@ make install     # 建后端 venv + 装前端依赖
 make build       # 构建前端并复制到 backend/app/static
 make api         # 启动后端 http://127.0.0.1:8787
 make dev         # 前端热更新（5173，/api 反代到 8787）
-make test        # pytest
+make test        # 后端 pytest
+make web-test    # 前端 vitest
+make test-all    # 前后端一起跑
 ```
 
 首次拉数据（两种任选）：
@@ -143,8 +146,9 @@ cd backend
 | 能力 | 游客 / 普通用户 | 管理员 |
 | --- | --- | --- |
 | 查看历史、统计、走势 | ✅ 免登录 | ✅ |
+| 注册 / 登录 / 改密 | ✅ 自助 | ✅ |
 | 生成预测、回测、AI 解读 | ✅ 免登录（受限流约束） | ✅ |
-| 票夹（增删查） | ✅ 按浏览器设备标识隔离 | ✅ 同样按身份隔离 |
+| 票夹（增删查） | ✅ 游客按设备隔离；登录后跨设备同步 | ✅ 同样按身份隔离 |
 | 提交 AI 供应商（Key） | ✅ 进待审队列，自己看不到明文 | ✅ |
 | 触发同步 / 补录 / 兑奖 | ❌ | ✅ |
 | 供应商启停 / 连通测试 | ❌ | ✅ |
@@ -313,7 +317,8 @@ GET    /api/predict/{game}/next        快速预测（count/engine/strategy/wind
 GET    /api/predict/history/{game}     预测历史
 POST   /api/backtest                   滚动回测（game/model/periods/window/k/stride）
 
-POST   /api/auth/login                 POST /api/auth/logout        GET /api/auth/me
+POST   /api/auth/login                 POST /api/auth/register      POST /api/auth/logout
+GET    /api/auth/me
 POST   /api/auth/password              改密（吊销全部会话）
 GET    /api/auth/sessions              DELETE /api/auth/sessions/{id}
 
@@ -338,6 +343,7 @@ POST   /api/sync/all                   POST /api/sync/{game}?mode=incremental|fu
 GET    /api/sync/status                GET /api/sync/stream（SSE 进度）  GET /api/sync/missing/{game}
 POST   /api/sync/settle/all            核对票夹兑奖
 GET    /api/tickets                    POST /api/tickets   DELETE /api/tickets/{id}
+POST   /api/tickets/claim               把本设备游客票迁移到登录账号
 ```
 
 交互式文档：`http://127.0.0.1:8787/api/docs`（`ENABLE_DOCS=false` 时关闭）。
@@ -384,7 +390,29 @@ GET    /api/tickets                    POST /api/tickets   DELETE /api/tickets/{
 输出模型平均命中、随机基线命中、提升倍数、TOP-K 命中率、logloss、Brier，并用 `_verdict` 给结论。
 `stride` 控制每 N 期重训一次以加速（默认 5）。
 
-### 9.5 必须知道的事实
+### 9.5 兑奖规则
+
+票夹与预测票在开奖后自动核对，奖金口径分两类：
+
+| 彩种 | 规则 |
+| --- | --- |
+| 双色球 | 红球命中数 + 蓝球是否命中定奖级（一等~六等），浮动奖从该期官方 `prize_grades` 取实际金额 |
+| 七乐彩 | 基本号命中 + 特别号定奖级，同样优先取官方金额 |
+| 福彩3D | 直选 1040 / 组三 346 / 组六 173；组选奖金取决于**开奖号码形态**，豹子号组选不设奖 |
+| 快乐8 | 按 `x{选几}z{中几}` 反查该期官方奖级，如 `x10z10` = 500 万；80 种组合零硬编码 |
+
+官方奖级缺失时退回内置兜底表，不会算成 0。
+单档「0 注 0 元」是真实情况（头奖空缺、选十中十无人中），页面显示为「空缺」。
+
+清理整期奖级全为 0 的脏数据：
+
+```bash
+cd backend
+.venv/bin/python -m app.scripts.clean_zero_prizes          # 先 dry-run 看数量
+.venv/bin/python -m app.scripts.clean_zero_prizes --apply  # 确认后执行
+```
+
+### 9.6 必须知道的事实
 
 彩票每期独立同分布，历史频率不改变下一期的真实概率。
 模型的价值在于**证伪**：如果某个引擎在回测里打不过 `uniform` 基线，那它就只是噪声拟合。
@@ -456,7 +484,8 @@ GET    /api/tickets                    POST /api/tickets   DELETE /api/tickets/{
 ## 13. 测试
 
 ```bash
-cd backend && .venv/bin/python -m pytest -q     # 133 passed
+cd backend && .venv/bin/python -m pytest -q     # 174 passed
+cd web && pnpm test                              # 25 passed（Vitest）
 ```
 
 全部离线（不联网、不启调度器、用临时 SQLite + 合成开奖数据），覆盖：彩种规则、开奖解析、分页与筛选、CSV 导出、统计指标、模型训练、预测注数、回测无未来信息泄漏、深历史补录只插缺期、供应商启停与鉴权、登录 / CSRF / 会话吊销 / 改密、管理后台用户与审计、AI 提交审核与降级（monkeypatch 大模型调用）。
