@@ -33,7 +33,12 @@ export function timeShort(ts: string | null | undefined): string {
   return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
-export const WEEKDAY_CN = ["日", "一", "二", "三", "四", "五", "六"];
+/**
+ * 星期中文名，索引约定与后端 `backend/app/games.py` 的 `draw_weekdays` 一致：0=周一 … 6=周日。
+ * 注意不要改成 JS `Date.getDay()` 的 0=周日 —— 后端返回的就是 0=周一，两边必须对齐，
+ * 否则双色球的「周二/四/日」会被渲染成「周一/三/六」。
+ */
+export const WEEKDAY_CN = ["一", "二", "三", "四", "五", "六", "日"];
 
 export function weekdayLabel(days: number[]): string {
   if (!days.length) return "—";
