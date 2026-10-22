@@ -165,3 +165,26 @@ body {
   height: 1.6rem;
   font-size: 0.72rem;
 }
+
+/* 页面切换轻微淡入：150ms 足够被感知，又不会拖慢点击响应 */
+@keyframes page-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-enter {
+  animation: page-fade-in 0.15s ease-out;
+}
+
+/* 尊重系统的减少动效偏好 */
+@media (prefers-reduced-motion: reduce) {
+  .page-enter {
+    animation: none;
+  }
+}

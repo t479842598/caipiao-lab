@@ -4,7 +4,7 @@ import { ApiError, api, type Game, type TicketRow } from "../lib/api";
 import { useAsync } from "../lib/hooks";
 import { useAuth } from "../lib/auth";
 import { Balls } from "../components/Balls";
-import { Badge, Button, Card, CardTitle, Empty, ErrorNote, NumberField, Select, Spinner, Stat, TextField } from "../components/ui";
+import { Badge, Button, Card, CardTitle, Empty, ErrorNote, NumberField, Select, Spinner, Stat, TextField, Skeleton} from "../components/ui";
 import { gameName, money, timeShort } from "../lib/format";
 
 export default function Tickets({ games }: { games: Game[] }) {
@@ -150,7 +150,7 @@ export default function Tickets({ games }: { games: Game[] }) {
           }
         />
         {list.loading ? (
-          <Spinner />
+          <Skeleton rows={5} />
         ) : list.error ? (
           <ErrorNote message={list.error} onRetry={list.reload} />
         ) : rows.length === 0 ? (

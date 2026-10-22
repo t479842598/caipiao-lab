@@ -151,7 +151,14 @@ export default function Predict() {
                   >
                     <div className="flex items-center gap-3">
                       <span className="num text-[11px] text-fog-400">#{t.index}</span>
-                      <Balls red={t.numbers.red} blue={t.numbers.blue} ordered={t.numbers.ordered ?? null} size="sm" max={20} />
+                      <Balls
+                        red={t.numbers.red}
+                        blue={t.numbers.blue}
+                        ordered={t.numbers.ordered ?? null}
+                        size="sm"
+                        max={20}
+                        copyable
+                      />
                     </div>
                     <div className="flex items-center gap-3 text-[11px] text-fog-400">
                       <span>奇偶 {t.structure.odd_even}</span>

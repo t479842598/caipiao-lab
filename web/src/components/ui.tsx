@@ -204,6 +204,21 @@ export function Stat({ label, value, hint, tone }: { label: string; value: React
   );
 }
 
+/** 骨架屏：比 Spinner 更能稳定布局，首屏不会因内容到位而跳动。 */
+export function Skeleton({ rows = 3, className }: { rows?: number; className?: string }) {
+  return (
+    <div className={cx("flex flex-col gap-2 py-2", className)} aria-hidden>
+      {Array.from({ length: rows }).map((_, i) => (
+        <div
+          key={i}
+          className="h-9 animate-pulse rounded-lg bg-ink-800/70"
+          style={{ animationDelay: `${i * 90}ms` }}
+        />
+      ))}
+    </div>
+  );
+}
+
 export function Spinner({ label = "加载中" }: { label?: string }) {
   return (
     <div className="flex items-center gap-2 py-8 text-xs text-fog-400">

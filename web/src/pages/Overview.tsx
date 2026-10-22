@@ -3,7 +3,7 @@ import { api, type Game } from "../lib/api";
 import { useAsync } from "../lib/hooks";
 import { useGame } from "../lib/store";
 import { Balls } from "../components/Balls";
-import { Badge, Button, Card, CardTitle, Empty, ErrorNote, Spinner } from "../components/ui";
+import { Badge, Button, Card, CardTitle, Empty, ErrorNote, Spinner, Skeleton} from "../components/ui";
 import { dateShort, gameName, money, timeShort, weekdayLabel } from "../lib/format";
 
 export default function Overview({ games }: { games: Game[] }) {
@@ -120,7 +120,7 @@ export default function Overview({ games }: { games: Game[] }) {
           }
         />
         {recent.loading ? (
-          <Spinner />
+          <Skeleton rows={5} />
         ) : recent.error ? (
           <ErrorNote message={recent.error} onRetry={recent.reload} />
         ) : !recent.data || recent.data.items.length === 0 ? (
@@ -157,8 +157,8 @@ export default function Overview({ games }: { games: Game[] }) {
                   <th className="py-2 pr-3 font-normal">期号</th>
                   <th className="py-2 pr-3 font-normal">开奖日</th>
                   <th className="py-2 pr-3 font-normal">号码</th>
-                  <th className="py-2 pr-3 text-right font-normal">销量</th>
-                  <th className="py-2 text-right font-normal">奖池</th>
+                  <th className="hidden py-2 pr-3 text-right font-normal lg:table-cell">销量</th>
+                  <th className="hidden py-2 text-right font-normal lg:table-cell">奖池</th>
                 </tr>
               </thead>
               <tbody>
@@ -175,8 +175,8 @@ export default function Overview({ games }: { games: Game[] }) {
                     <td className="py-2 pr-3">
                       <Balls red={d.numbers.red} blue={d.numbers.blue} ordered={d.ordered} size="sm" max={8} />
                     </td>
-                    <td className="num py-2 pr-3 text-right text-fog-400">{money(d.sales)}</td>
-                    <td className="num py-2 text-right text-fog-400">{money(d.pool_money)}</td>
+                    <td className="num hidden py-2 pr-3 text-right text-fog-400 lg:table-cell">{money(d.sales)}</td>
+                    <td className="num hidden py-2 text-right text-fog-400 lg:table-cell">{money(d.pool_money)}</td>
                   </tr>
                 ))}
               </tbody>

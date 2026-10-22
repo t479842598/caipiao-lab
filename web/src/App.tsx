@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { Layout } from "./components/Layout";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { GameProvider } from "./lib/store";
 import { AuthProvider } from "./lib/auth";
 import { ThemeProvider } from "./lib/theme";
@@ -16,6 +17,7 @@ import Tickets from "./pages/Tickets";
 import Login from "./pages/Login";
 import Admin from "./pages/Admin";
 import Ai from "./pages/Ai";
+import NotFound from "./pages/NotFound";
 
 export default function App() {
   const health = useAsync(() => api.health(), []);
@@ -54,20 +56,22 @@ export default function App() {
       <AuthProvider>
         <GameProvider>
           <Layout games={games.data ?? []} healthOk={!!health.data?.ok}>
-            <Routes>
-              <Route path="/" element={<Overview games={games.data ?? []} />} />
-              <Route path="/history" element={<History games={games.data ?? []} />} />
-              <Route path="/analytics" element={<Analytics />} />
-              <Route path="/predict" element={<Predict />} />
-              <Route path="/ai" element={<Ai />} />
-              <Route path="/backtest" element={<Backtest />} />
-              <Route path="/sync" element={<Sync />} />
-              <Route path="/tickets" element={<Tickets games={games.data ?? []} />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/admin" element={<Admin />} />
-              <Route path="/providers" element={<Navigate to="/sync" replace />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
+            <ErrorBoundary>
+              <Routes>
+                <Route path="/" element={<Overview games={games.data ?? []} />} />
+                <Route path="/history" element={<History games={games.data ?? []} />} />
+                <Route path="/analytics" element={<Analytics />} />
+                <Route path="/predict" element={<Predict />} />
+                <Route path="/ai" element={<Ai />} />
+                <Route path="/backtest" element={<Backtest />} />
+                <Route path="/sync" element={<Sync />} />
+                <Route path="/tickets" element={<Tickets games={games.data ?? []} />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/admin" element={<Admin />} />
+                <Route path="/providers" element={<Navigate to="/sync" replace />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </ErrorBoundary>
           </Layout>
         </GameProvider>
       </AuthProvider>

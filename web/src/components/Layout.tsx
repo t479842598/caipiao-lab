@@ -22,8 +22,12 @@ const NAV: NavItem[] = [
   { to: "/admin", label: "管理后台", short: "后台", adminOnly: true },
 ];
 
-/** 底部 Tab：手机上最常用的 5 个入口，其余收进抽屉。 */
-const TABS: NavItem[] = [NAV[0], NAV[1], NAV[3], NAV[2], NAV[6]];
+/**
+ * 底部 Tab：手机上最常用的 4 个入口 + 更多。
+ * 选「AI 分析」而不是「走势统计」：走势图在手机上信息密度太高，
+ * 实际使用频率低于「看 AI 怎么说」，而 AI 页内容更适合竖屏。
+ */
+const TABS: NavItem[] = [NAV[0], NAV[1], NAV[3], NAV[4]];
 
 const HIDE_GAME_PICKER = ["/sync", "/admin", "/tickets", "/ai"];
 
@@ -65,6 +69,13 @@ function Icon({ name }: { name: string }) {
       return (
         <svg {...common}>
           <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
+        </svg>
+      );
+    case "AI":
+      return (
+        <svg {...common}>
+          <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" />
+          <path d="M18 15l.9 2.1L21 18l-2.1.9L18 21l-.9-2.1L15 18l2.1-.9z" />
         </svg>
       );
     default:
@@ -295,7 +306,10 @@ export function Layout({
         )}
       </header>
 
-      <main className="shell flex-1 py-4 md:py-5">{children}</main>
+      {/* key 用 pathname：路由切换时重挂载，让淡入动画重新播放 */}
+      <main key={loc.pathname} className="shell page-enter flex-1 py-4 md:py-5">
+        {children}
+      </main>
 
       <footer className="shell pb-8 pt-4 text-[11px] leading-relaxed text-ink-500">
         数据来源：中国福利彩票发行管理中心官方公开接口。所有号码、奖金、销量均为官方开奖数据的历史存档。
