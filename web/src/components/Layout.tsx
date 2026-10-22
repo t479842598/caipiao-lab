@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import type { ReactNode } from "react";
 import { cx } from "./ui";
 import { useGame } from "../lib/store";
@@ -120,9 +120,11 @@ export function Layout({
   healthOk: boolean;
 }) {
   const { game, setGame } = useGame();
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, isAuthed, logout } = useAuth();
   const loc = useLocation();
+  const nav = useNavigate();
   const [drawer, setDrawer] = useState(false);
+  const [menu, setMenu] = useState(false);
   const gameMeta = games.find((g) => g.code === game);
   const showGamePicker = !HIDE_GAME_PICKER.includes(loc.pathname);
 
@@ -212,12 +214,59 @@ export function Layout({
 
             <ThemeToggle />
 
-            <NavLink
-              to={isAdmin ? "/admin" : "/login"}
-              className="hidden shrink-0 rounded-lg border border-ink-700 px-2.5 py-1.5 text-xs text-fog-300 transition hover:border-jade/60 hover:text-jade md:block"
-            >
-              {isAdmin ? user?.username ?? "后台" : "登录"}
-            </NavLink>
+            {isAuthed ? (
+              <div className="relative hidden md:block">
+                <button
+                  onClick={() => setMenu((v) => !v)}
+                  className="shrink-0 rounded-lg border border-ink-700 px-2.5 py-1.5 text-xs text-fog-300 transition hover:border-jade/60 hover:text-jade"
+                >
+                  {user?.display_name || user?.username || "我的账号"} ▾
+                </button>
+                {menu && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setMenu(false)} />
+                    <div className="absolute right-0 z-50 mt-1 w-40 overflow-hidden rounded-xl border border-ink-700 bg-ink-900 shadow-xl">
+                      <div className="border-b border-ink-700/60 px-3 py-2 text-[11px] text-fog-500">
+                        {user?.username} · {user?.role === "admin" ? "管理员" : "普通用户"}
+                      </div>
+                      <button
+                        onClick={() => { setMenu(false); nav("/tickets"); }}
+                        className="block w-full px-3 py-2 text-left text-xs text-fog-300 hover:bg-ink-800"
+                      >
+                        我的票夹
+                      </button>
+                      <button
+                        onClick={() => { setMenu(false); nav("/login"); }}
+                        className="block w-full px-3 py-2 text-left text-xs text-fog-300 hover:bg-ink-800"
+                      >
+                        修改密码
+                      </button>
+                      {isAdmin && (
+                        <button
+                          onClick={() => { setMenu(false); nav("/admin"); }}
+                          className="block w-full px-3 py-2 text-left text-xs text-fog-300 hover:bg-ink-800"
+                        >
+                          管理后台
+                        </button>
+                      )}
+                      <button
+                        onClick={async () => { setMenu(false); await logout(); nav("/"); }}
+                        className="block w-full border-t border-ink-700/60 px-3 py-2 text-left text-xs text-ball-red hover:bg-ink-800"
+                      >
+                        退出登录
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              <NavLink
+                to="/login"
+                className="hidden shrink-0 rounded-lg border border-ink-700 px-2.5 py-1.5 text-xs text-fog-300 transition hover:border-jade/60 hover:text-jade md:block"
+              >
+                登录 / 注册
+              </NavLink>
+            )}
 
             <button
               onClick={() => setDrawer(true)}
@@ -323,13 +372,41 @@ export function Layout({
                 </div>
               </div>
             </div>
-            <div className="border-t border-ink-700/80 p-3">
-              <NavLink
-                to={isAdmin ? "/admin" : "/login"}
-                className="block rounded-lg border border-ink-700 px-3 py-2 text-center text-xs text-fog-300"
-              >
-                {isAdmin ? "管理后台 · " + (user?.username ?? "") : "管理员登录"}
-              </NavLink>
+            <div className="flex flex-col gap-2 border-t border-ink-700/80 p-3">
+              {isAuthed ? (
+                <>
+                  <div className="px-1 text-[11px] text-fog-500">
+                    {user?.display_name || user?.username} · {isAdmin ? "管理员" : "普通用户"}
+                  </div>
+                  <NavLink
+                    to="/tickets"
+                    className="block rounded-lg border border-ink-700 px-3 py-2 text-center text-xs text-fog-300"
+                  >
+                    我的票夹
+                  </NavLink>
+                  {isAdmin && (
+                    <NavLink
+                      to="/admin"
+                      className="block rounded-lg border border-ink-700 px-3 py-2 text-center text-xs text-fog-300"
+                    >
+                      管理后台
+                    </NavLink>
+                  )}
+                  <button
+                    onClick={async () => { setDrawer(false); await logout(); nav("/"); }}
+                    className="block rounded-lg border border-ball-red/30 px-3 py-2 text-center text-xs text-ball-red"
+                  >
+                    退出登录
+                  </button>
+                </>
+              ) : (
+                <NavLink
+                  to="/login"
+                  className="block rounded-lg border border-ink-700 px-3 py-2 text-center text-xs text-fog-300"
+                >
+                  登录 / 注册
+                </NavLink>
+              )}
             </div>
           </div>
         </div>

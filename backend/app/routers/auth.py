@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
-from ..auth_deps import Principal, client_ip, current_user, optional_user, require_admin
+from ..auth_deps import Principal, client_ip, current_user, optional_user, require_admin, require_login
 from ..config import settings
 from ..db import get_db
 from ..models import User, UserSession
@@ -15,6 +15,7 @@ from ..schemas import (
     LoginIn,
     LoginOut,
     MeOut,
+    RegisterIn,
     SessionOut,
     UserOut,
 )
@@ -88,6 +89,62 @@ def login(payload: LoginIn, request: Request, response: Response, db: OrmSession
     return LoginOut(ok=True, user=_user_out(user), csrf=CSRF_VALUE)
 
 
+@router.post("/register", response_model=LoginOut)
+def register(
+    payload: RegisterIn,
+    request: Request,
+    response: Response,
+    db: OrmSession = Depends(get_db),
+) -> LoginOut:
+    """普通用户注册。注册即登录，票夹随账号跨设备同步。
+
+    与管理员账号共用 users 表，靠 role 区分：admin 能进后台，user 只能用前台功能。
+    """
+    ip = client_ip(request)
+    # 复用登录失败计数器做注册限流，防止批量刷号
+    key = f"register|{ip}"
+    if failure_count(key) >= settings.login_max_fails:
+        raise HTTPException(429, f"注册过于频繁，请 {settings.login_lock_minutes} 分钟后再试")
+
+    exists = db.execute(select(User).where(User.username == payload.username)).scalar_one_or_none()
+    if exists is not None:
+        register_failure(key)
+        raise HTTPException(400, "该用户名已被占用")
+
+    ok, msg = password_ok(payload.password)
+    if not ok:
+        raise HTTPException(400, msg)
+
+    user = User(
+        username=payload.username,
+        password_hash=hash_password(payload.password),
+        display_name=(payload.display_name or payload.username)[:64],
+        role="user",
+        enabled=True,
+        password_changed_at=utcnow(),
+    )
+    db.add(user)
+    db.flush()
+
+    user.last_login_at = utcnow()
+    user.last_login_ip = ip
+    token, _row = create_session(db, user, ip=ip, ua=request.headers.get("user-agent", ""))
+    audit(db, actor=user.username, action="register", status="ok", ip=ip,
+          ua=request.headers.get("user-agent", ""))
+    db.commit()
+
+    response.set_cookie(
+        SESSION_COOKIE,
+        token,
+        max_age=settings.session_ttl_hours * 3600,
+        httponly=True,
+        samesite="lax",
+        secure=settings.cookie_secure,
+        path="/",
+    )
+    return LoginOut(ok=True, user=_user_out(user), csrf=CSRF_VALUE)
+
+
 @router.post("/logout")
 def logout(request: Request, response: Response, db: OrmSession = Depends(get_db)) -> dict:
     token = request.cookies.get(SESSION_COOKIE, "")
@@ -105,8 +162,11 @@ def logout(request: Request, response: Response, db: OrmSession = Depends(get_db
 
 @router.get("/me", response_model=MeOut)
 def me(who: Principal = Depends(optional_user), db: OrmSession = Depends(get_db)) -> MeOut:
-    if not who.is_admin:
+    # 任何已登录身份（管理员或普通用户）都算 authenticated，
+    # 后台权限由前端按 role 判断，不能在这里把普通用户当游客。
+    if who.kind == "anonymous":
         return MeOut(authenticated=False, ai_enabled=settings.ai_enabled)
+
     user = db.get(User, who.user_id) if who.user_id else None
     if user is not None:
         return MeOut(
@@ -123,6 +183,7 @@ def me(who: Principal = Depends(optional_user), db: OrmSession = Depends(get_db)
             csrf=CSRF_VALUE,
             ai_enabled=settings.ai_enabled,
         )
+    # 静态令牌模式
     return MeOut(
         authenticated=True,
         user=UserOut(id=0, username=who.username, display_name="静态令牌", role=who.role, enabled=True),
@@ -136,7 +197,7 @@ def change_password(
     payload: ChangePasswordIn,
     request: Request,
     db: OrmSession = Depends(get_db),
-    who: Principal = Depends(require_admin),
+    who: Principal = Depends(require_login),
 ) -> dict:
     if who.user_id is None:
         raise HTTPException(400, "静态令牌模式不支持改密")
@@ -162,7 +223,7 @@ def change_password(
 @router.get("/sessions", response_model=list[SessionOut])
 def list_sessions(
     db: OrmSession = Depends(get_db),
-    who: Principal = Depends(require_admin),
+    who: Principal = Depends(require_login),
 ) -> list[SessionOut]:
     if who.user_id is None:
         return []
@@ -191,7 +252,7 @@ def kill_session(
     session_id: int,
     request: Request,
     db: OrmSession = Depends(get_db),
-    who: Principal = Depends(require_admin),
+    who: Principal = Depends(require_login),
 ) -> dict:
     row = db.get(UserSession, session_id)
     if row is None or (who.user_id is not None and row.user_id != who.user_id):

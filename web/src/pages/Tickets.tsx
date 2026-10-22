@@ -1,16 +1,20 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { ApiError, api, type Game, type TicketRow } from "../lib/api";
 import { useAsync } from "../lib/hooks";
+import { useAuth } from "../lib/auth";
 import { Balls } from "../components/Balls";
 import { Badge, Button, Card, CardTitle, Empty, ErrorNote, NumberField, Select, Spinner, Stat, TextField } from "../components/ui";
 import { gameName, money, timeShort } from "../lib/format";
 
 export default function Tickets({ games }: { games: Game[] }) {
-  const list = useAsync(() => api.tickets(), []);
-  const stats = useAsync(() => api.ticketStats(), []);
+  const { isAuthed, user } = useAuth();
+  const list = useAsync(() => api.tickets(), [isAuthed]);
+  const stats = useAsync(() => api.ticketStats(), [isAuthed]);
   const [filter, setFilter] = useState("all");
   const [busy, setBusy] = useState<number | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [claimMsg, setClaimMsg] = useState<string | null>(null);
 
   const [game, setGame] = useState("ssq");
   const [issue, setIssue] = useState("");
@@ -60,6 +64,47 @@ export default function Tickets({ games }: { games: Game[] }) {
 
   return (
     <div className="flex flex-col gap-4">
+      {!isAuthed && (
+        <Card className="border-amber-glow/40 bg-amber-glow/5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <div className="text-sm font-semibold text-amber-glow">当前为游客模式</div>
+              <div className="mt-1 text-[11px] text-fog-400">
+                票存在这台浏览器里，换设备或清缓存就没了。注册登录后票夹跨设备同步，已有的游客票会自动迁移。
+              </div>
+            </div>
+            <Link to="/login">
+              <Button variant="primary">注册 / 登录</Button>
+            </Link>
+          </div>
+        </Card>
+      )}
+
+      {isAuthed && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-ink-700/70 bg-ink-900/40 px-3 py-2 text-[11px] text-fog-400">
+          <span>
+            已登录 <span className="text-fog-200">{user?.display_name || user?.username}</span>，票夹跟随账号同步
+          </span>
+          <Button
+            variant="subtle"
+            onClick={async () => {
+              try {
+                const r = await api.claimTickets();
+                setClaimMsg(r.moved > 0 ? `已迁移 ${r.moved} 张本设备票` : "本设备没有待迁移的票");
+                if (r.moved > 0) { list.reload(); stats.reload(); }
+              } catch (e) {
+                setClaimMsg("迁移失败：" + (e instanceof Error ? e.message : String(e)));
+              }
+            }}
+          >
+            迁移本设备票
+          </Button>
+        </div>
+      )}
+      {claimMsg && (
+        <div className="rounded-lg border border-jade/30 bg-jade/10 px-3 py-2 text-[11px] text-jade">{claimMsg}</div>
+      )}
+
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5 2xl:gap-4">
         <Stat label="总注数" value={stats.data?.total_tickets ?? 0} />
         <Stat label="总投入" value={money(stats.data?.total_cost ?? 0)} />

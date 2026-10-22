@@ -113,6 +113,43 @@ def delete_ticket(
     return {"ok": True}
 
 
+@router.post("/claim")
+def claim_device_tickets(
+    request: Request,
+    db: OrmSession = Depends(get_db),
+    who: Principal = Depends(optional_user),
+    device_id: str | None = Header(default=None, alias="X-Device-Id"),
+) -> dict:
+    """把当前设备下的游客票迁移到登录账号。
+
+    场景：用户先以游客身份用票夹，之后注册/登录，历史票不该丢。
+    只迁移本设备的票（`d:<device_id>`），不动别人的。
+    """
+    if settings.read_only:
+        raise HTTPException(403, "当前为只读模式")
+    if who.user_id is None:
+        raise HTTPException(401, "请先登录再迁移票夹")
+
+    did = (device_id or request.headers.get("x-device-id", "") or "").strip()
+    if not did or len(did) > 40:
+        raise HTTPException(400, "缺少设备标识 X-Device-Id")
+    safe = "".join(ch for ch in did if ch.isalnum() or ch in "-_")
+    if not safe:
+        raise HTTPException(400, "设备标识非法")
+
+    device_key = f"d:{safe}"
+    user_key = f"u:{who.user_id}"
+
+    rows = db.execute(select(Ticket).where(Ticket.owner_key == device_key)).scalars().all()
+    moved = 0
+    for row in rows:
+        row.owner_key = user_key
+        moved += 1
+    if moved:
+        db.commit()
+    return {"ok": True, "moved": moved, "from": device_key, "to": user_key}
+
+
 @router.get("/stats/summary", response_model=TicketStatsOut)
 def stats(
     request: Request,

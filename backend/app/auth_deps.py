@@ -87,6 +87,24 @@ def optional_user(
     return resolve_principal(request, db, admin_token)
 
 
+def require_login(
+    request: Request,
+    db: OrmSession = Depends(get_db),
+    admin_token: str | None = Header(default=None, alias="X-Admin-Token"),
+) -> Principal:
+    """任何已登录身份（管理员或普通用户），用于改密、会话管理等自助操作。
+
+    与 require_admin 的区别：不检查 role，但同样对写操作校验 CSRF 头。
+    """
+    who = resolve_principal(request, db, admin_token)
+    if who.kind == "anonymous" or who.user_id is None:
+        raise HTTPException(401, "请先登录")
+    if request.method not in ("GET", "HEAD", "OPTIONS"):
+        if request.headers.get("x-csrf", "") != "1":
+            raise HTTPException(403, "缺少 CSRF 头")
+    return who
+
+
 def current_user(
     who: Principal = Depends(require_admin),
     db: OrmSession = Depends(get_db),

@@ -313,6 +313,14 @@ class LoginIn(BaseModel):
     password: str = Field(min_length=1, max_length=200)
 
 
+class RegisterIn(BaseModel):
+    """普通用户自助注册。用户名只允许字母/数字/下划线/短横线，避免与 URL 冲突。"""
+
+    username: str = Field(min_length=3, max_length=32, pattern=r"^[A-Za-z0-9_-]+$")
+    password: str = Field(min_length=8, max_length=200)
+    display_name: str = Field(default="", max_length=32)
+
+
 class UserOut(BaseModel):
     id: int
     username: str

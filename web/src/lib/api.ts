@@ -508,6 +508,10 @@ export const api = {
   me: () => request<MeOut>("/auth/me"),
   login: (body: { username: string; password: string }) =>
     request<LoginOut>("/auth/login", { method: "POST", body: JSON.stringify(body) }),
+  register: (body: { username: string; password: string; display_name?: string }) =>
+    request<LoginOut>("/auth/register", { method: "POST", body: JSON.stringify(body) }),
+  claimTickets: () =>
+    request<{ ok: boolean; moved: number; from: string; to: string }>("/tickets/claim", { method: "POST" }),
   logout: () => request<{ ok: boolean }>("/auth/logout", { method: "POST" }),
   changePassword: (body: { old_password: string; new_password: string }) =>
     request<{ ok: boolean; revoked_sessions: number }>("/auth/password", {
