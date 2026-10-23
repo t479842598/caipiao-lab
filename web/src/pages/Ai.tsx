@@ -3,6 +3,7 @@ import { api, ApiError, type AiProviderRow, type AiVendor, type Engine, type Ins
 import { useAsync } from "../lib/hooks";
 import { useGame } from "../lib/store";
 import { gameName, ENGINE_LABELS, STRATEGY_LABELS } from "../lib/format";
+import { Glossary } from "../components/Term";
 import {
   Badge,
   Button,
@@ -148,15 +149,15 @@ export default function Ai() {
     <div className="flex flex-col gap-4">
       <Card>
         <CardTitle
-          title="AI 号码分析"
-          sub="用统计模型产出候选号码与结构画像，再交给大语言模型解读。模型只做解读，不改变概率。"
+          title="让 AI 解释这组号码"
+          sub="先用统计方法算出一组候选号码，再让大语言模型用大白话解释「为什么是这几个号」。AI 只负责解释，不改变计算结果"
           right={<Badge tone="info">{gameName(game)}</Badge>}
         />
         <div className="flex flex-wrap items-end gap-3">
-          <Select value={engine} onChange={setEngine} options={ENGINE_OPTIONS} label="引擎" />
-          <Select value={strategy} onChange={setStrategy} options={STRATEGY_OPTIONS} label="策略" />
-          <NumberField value={count} onChange={setCount} min={1} max={20} label="注数" />
-          <NumberField value={window} onChange={setWindow} min={10} max={2000} step={10} label="窗口" width="w-24" />
+          <Select value={engine} onChange={setEngine} options={ENGINE_OPTIONS} label="算法" />
+          <Select value={strategy} onChange={setStrategy} options={STRATEGY_OPTIONS} label="选号偏好" />
+          <NumberField value={count} onChange={setCount} min={1} max={20} label="生成几注" />
+          <NumberField value={window} onChange={setWindow} min={10} max={2000} step={10} label="参考最近几期" width="w-24" />
           <Select
             value={providerId}
             onChange={setProviderId}
@@ -167,7 +168,7 @@ export default function Ai() {
                 label: p.name + " · " + p.model,
               })),
             ]}
-            label="AI 供应商"
+            label="用哪个 AI"
           />
         </div>
         <div className="mt-3">
@@ -181,7 +182,7 @@ export default function Ai() {
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Button variant="primary" onClick={analyze} disabled={busy}>
-            {busy ? "分析中…" : "生成分析"}
+            {busy ? "分析中…" : "开始分析"}
           </Button>
           <span className="text-[11px] text-fog-500">
             可用供应商 {(approved.data ?? []).length} 个；无可用供应商时返回本地规则解读。
@@ -189,7 +190,7 @@ export default function Ai() {
         </div>
         {busy && (
           <div className="mt-3">
-            <Spinner label="正在跑统计模型并请求大模型" />
+            <Spinner label="正在计算号码并请求 AI 解读" />
           </div>
         )}
         {err && (
@@ -210,7 +211,10 @@ export default function Ai() {
       </Card>
 
       <Card>
-        <CardTitle title="本彩种画像" sub="冷热号、遗漏、结构与随机性检验，作为 AI 解读的输入" />
+        <CardTitle
+          title="当前彩种的数据概况"
+          sub="热号冷号、多久没出、号码结构、随机性检验 —— 这些是喂给 AI 的原始材料"
+        />
         {insight.loading ? (
           <Spinner />
         ) : insight.error ? (
@@ -304,7 +308,7 @@ export default function Ai() {
       </Card>
 
       <Card>
-        <CardTitle title="已启用的供应商" sub="只有审核通过且启用的供应商会被调用" />
+        <CardTitle title="可用的 AI 服务" sub="只有经管理员审核通过的才会被调用；没有可用服务时会改用本地规则生成解读" />
         {approved.loading ? (
           <Spinner />
         ) : !approved.data || approved.data.length === 0 ? (
@@ -327,6 +331,8 @@ export default function Ai() {
           </div>
         )}
       </Card>
+
+      <Glossary />
     </div>
   );
 }
@@ -339,7 +345,7 @@ function InsightBody({ data }: { data: Insight }) {
         <MiniList title="热号" rows={data.hot.slice(0, 6).map((r) => ({ k: String(r.n), v: r.count + " 次" }))} tone="text-ball-red" />
         <MiniList title="冷号" rows={data.cold.slice(0, 6).map((r) => ({ k: String(r.n), v: r.count + " 次" }))} tone="text-ball-blue" />
         <MiniList
-          title="遗漏前列"
+          title="最久没出的"
           rows={data.omission_top.slice(0, 6).map((r) => ({ k: String(r.n), v: "当前 " + r.current + " 期" }))}
           tone="text-amber-glow"
         />

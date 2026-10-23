@@ -5,6 +5,7 @@ import { useGame } from "../lib/store";
 import { EChart, axisStyle, baseGrid, tooltipStyle, useChartColors } from "../components/EChart";
 import { Badge, Button, Card, CardTitle, Empty, ErrorNote, NumberField, Select, Spinner, Stat } from "../components/ui";
 import { ENGINE_LABELS, gameName } from "../lib/format";
+import { TermHint, Glossary } from "../components/Term";
 import type { EChartsCoreOption } from "echarts/core";
 
 const ENGINE_OPTS = (Object.keys(ENGINE_LABELS) as Engine[]).map((k) => ({ value: k, label: ENGINE_LABELS[k] }));
@@ -77,41 +78,41 @@ export default function Backtest() {
     <div className="flex flex-col gap-4">
       <Card>
         <CardTitle
-          title={gameName(game) + " 滚动回测"}
-          sub="每期只用当期之前的数据训练，再用该期真实开奖核对命中——这是检验模型是否有效的唯一诚实方式"
+          title={gameName(game) + " 算法实测验证"}
+          sub="模拟「在过去每一期开奖前，只用那之前的数据猜，然后和真实结果对答案」。这是检验算法有没有真本事的唯一诚实办法"
         />
         <div className="flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1">
             <span className="text-[11px] uppercase tracking-wider text-fog-400">模型</span>
             <Select value={engine} onChange={setEngine} options={ENGINE_OPTS} />
           </label>
-          <NumberField label="回测期数" value={periods} onChange={setPeriods} min={50} max={2000} width="w-24" />
-          <NumberField label="回看窗口" value={window} onChange={setWindow} min={20} max={1000} width="w-20" />
-          <NumberField label="每期取前" value={topk} onChange={setTopk} min={1} max={20} width="w-16" />
-          <NumberField label="重训间隔" value={stride} onChange={setStride} min={1} max={20} width="w-16" />
+          <NumberField label="检验多少期" value={periods} onChange={setPeriods} min={50} max={2000} width="w-24" />
+          <NumberField label="每期参考最近" value={window} onChange={setWindow} min={20} max={1000} width="w-20" />
+          <NumberField label="取最看好的前" value={topk} onChange={setTopk} min={1} max={20} width="w-16" />
+          <NumberField label="每几期重算一次" value={stride} onChange={setStride} min={1} max={20} width="w-16" />
           <Button variant="primary" onClick={run} disabled={loading}>
-            {loading ? "回测中…" : "开始回测"}
+            {loading ? "检验中…" : "开始检验"}
           </Button>
-          <span className="text-[11px] text-fog-400">树模型每 {stride} 期重训一次，可显著缩短耗时</span>
+          <span className="text-[11px] text-fog-400">每 {stride} 期才重新算一次模型（只为提速，略降精度）</span>
         </div>
         {error && <div className="mt-3"><ErrorNote message={error} /></div>}
       </Card>
 
       {loading && (
         <Card>
-          <Spinner label={"正在滚动回测 " + periods + " 期（树模型较慢，请稍候）"} />
+          <Spinner label={"正在逐期检验 " + periods + " 期（机器学习算法较慢，请稍候）"} />
         </Card>
       )}
 
       {data && !loading && (
         <>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-6 2xl:gap-4">
-            <Stat label="模型平均命中" value={data.model.avg_hits} hint={"基线 " + data.baseline.avg_hits} />
-            <Stat label="命中提升" value={data.lift_avg_hits + "×"} tone={liftTone as "good" | "warn" | "bad"} hint="相对均匀基线" />
-            <Stat label="Top-K 命中率" value={(data.model.hit_rate_at_topk * 100).toFixed(1) + "%"} hint={"前 " + data.topk + " 号"} />
-            <Stat label="对数损失" value={data.model.log_loss} hint={"基线 " + data.baseline.log_loss} />
-            <Stat label="Brier 分数" value={data.model.brier} hint="越小越准" />
-            <Stat label="实回测" value={data.per_issue.length + " 期"} hint={"stride " + data.stride} />
+            <Stat label="平均猜中几个号" value={data.model.avg_hits} hint={"瞎猜是 " + data.baseline.avg_hits + " 个"} />
+            <Stat label="比瞎猜强多少" value={data.lift_avg_hits + "×"} tone={liftTone as "good" | "warn" | "bad"} hint="1.0× = 和瞎猜一样" />
+            <Stat label="最看好的号猜中率" value={(data.model.hit_rate_at_topk * 100).toFixed(1) + "%"} hint={"前 " + data.topk + " 个号里"} />
+            <Stat label="概率估计误差" value={data.model.log_loss} hint={"瞎猜是 " + data.baseline.log_loss + "（越小越好）"} />
+            <Stat label="概率准确度" value={data.model.brier} hint="0 = 完美，越小越好" />
+            <Stat label="实际检验" value={data.per_issue.length + " 期"} hint={"每组 " + data.stride + " 期"} />
           </div>
 
           <div className={"rounded-xl border px-4 py-3 text-xs leading-relaxed " + (data.lift_avg_hits > 1.05 ? "border-jade/30 bg-jade/8 text-jade" : data.lift_avg_hits < 0.95 ? "border-ball-red/30 bg-ball-red/8 text-ball-red" : "border-amber-glow/30 bg-amber-glow/8 text-amber-glow")}>
@@ -120,17 +121,17 @@ export default function Backtest() {
 
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] 2xl:grid-cols-[minmax(0,1fr)_380px]">
             <Card>
-              <CardTitle title="逐期命中曲线" sub="绿线为模型，灰虚线为均匀基线" right={<Badge tone="info">{ENGINE_LABELS[data.engine] ?? data.engine}</Badge>} />
+              <CardTitle title="每期猜中几个号" sub="绿线是算法，灰虚线是「完全瞎猜」的水平。两条线贴在一起就说明算法没用" right={<Badge tone="info">{ENGINE_LABELS[data.engine] ?? data.engine}</Badge>} />
               <EChart option={curveOption} height={300} />
             </Card>
             <Card>
-              <CardTitle title="命中分布" sub="每期命中几个号码的次数统计" />
+              <CardTitle title="猜中个数的分布" sub="横轴是猜中几个，纵轴是出现了多少期" />
               <EChart option={histOption} height={300} />
             </Card>
           </div>
 
           <Card>
-            <CardTitle title="指标对照" />
+            <CardTitle title="各项指标对比" sub="「提升」大于 1 才算比瞎猜强" />
             <div className="overflow-x-auto">
               <table className="w-full min-w-[460px] text-xs">
                 <thead>
@@ -143,11 +144,11 @@ export default function Backtest() {
                 </thead>
                 <tbody>
                   {[
-                    { label: "平均命中", m: data.model.avg_hits, b: data.baseline.avg_hits },
-                    { label: "Top-K 命中率", m: data.model.hit_rate_at_topk, b: data.baseline.hit_rate_at_topk },
-                    { label: "对数损失", m: data.model.log_loss, b: data.baseline.log_loss },
-                    { label: "Brier 分数", m: data.model.brier, b: data.baseline.brier },
-                    { label: "单注平均命中", m: data.model.avg_ticket_hits, b: data.baseline.avg_ticket_hits },
+                    { label: "平均猜中号数", m: data.model.avg_hits, b: data.baseline.avg_hits },
+                    { label: "最看好的号猜中率", m: data.model.hit_rate_at_topk, b: data.baseline.hit_rate_at_topk },
+                    { label: "概率估计误差（越小越好）", m: data.model.log_loss, b: data.baseline.log_loss },
+                    { label: "概率准确度（越小越好）", m: data.model.brier, b: data.baseline.brier },
+                    { label: "每组号码平均猜中", m: data.model.avg_ticket_hits, b: data.baseline.avg_ticket_hits },
                   ].map((row) => {
                     const ratio = row.b ? row.m / row.b : 0;
                     return (
@@ -170,15 +171,35 @@ export default function Backtest() {
 
       {!data && !loading && (
         <Card>
-          <CardTitle title="为什么必须做回测" />
-          <div className="flex flex-col gap-2 text-[11px] leading-relaxed text-fog-400">
-            <p>彩票开奖在设计上是独立同分布事件，理论上任何模型都无法提高中奖概率。本页的意义在于用真实历史数据把这个结论量化出来。</p>
-            <p>如果某个模型在回测中稳定跑赢均匀基线，多半是小样本波动、过拟合，或者训练时不小心看到了未来数据。历史上真正稳健的优势从未出现过。</p>
-            <p>回测流程：从第 N 期开始，逐期用「该期之前」的全部数据训练，预测下一期，再与该期实际开奖比对。全程严格禁止使用未来信息，代码里有对应测试覆盖。</p>
+          <CardTitle title="为什么必须做这个检验" sub="这一页其实是在诚实地告诉你：预测到底有多大用" />
+          <div className="flex flex-col gap-2.5 text-[11px] leading-relaxed text-fog-400">
+            <p>
+              <span className="text-fog-200">彩票每期都是独立的。</span>
+              摇奖机不会记住上一期开了什么，也不会因为某个号「冷了 30 期」就补偿它。
+              所以从数学上说，<span className="text-fog-200">任何算法都无法真正提高中奖概率</span>。
+            </p>
+            <p>
+              <span className="text-fog-200">那为什么还要做这个页面？</span>
+              因为「无法提高」是个结论，需要用你自己的数据验证一遍才算数。
+              这一页就是拿真实历史逐期检验，把「算法到底有没有用」量化出来。
+            </p>
+            <p>
+              <span className="text-fog-200">如果某个算法看起来赢了怎么办？</span>
+              多半是三种情况：样本太小、算法把噪声当规律记住了（过拟合）、
+              或者实现时不小心用到了「当时还不知道」的数据。
+              所以在彩票上，稳定跑赢「瞎猜」的算法，现实中从未出现过。
+            </p>
+            <p>
+              <span className="text-fog-200">检验流程：</span>
+              从第 N 期开始，每一期都只用「这一期之前」的数据算一遍，猜这期，再和真实开奖对答案。
+              全程禁止偷看未来，代码里有专门的测试守住这条线。
+            </p>
           </div>
         </Card>
       )}
       {history.error && <ErrorNote message={history.error} />}
+
+      <Glossary />
     </div>
   );
 }

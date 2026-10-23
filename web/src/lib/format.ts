@@ -45,20 +45,35 @@ export function weekdayLabel(days: number[]): string {
   return days.map((d) => `周${WEEKDAY_CN[d] ?? "?"}`).join("、");
 }
 
+/**
+ * 算法名。括号内是业界叫法，方便想深入了解的人检索；
+ * 括号前是给普通用户看的大白话。
+ */
 export const ENGINE_LABELS: Record<string, string> = {
-  uniform: "均匀基线",
-  frequency: "频率热号",
-  omission: "遗漏回补",
-  markov: "马尔可夫",
-  bayes: "贝叶斯",
-  gbdt: "梯度提升树",
-  ensemble: "多模型集成",
+  uniform: "均匀随机（对照组）",
+  frequency: "追热门",
+  omission: "等冷门",
+  markov: "看上期",
+  bayes: "稳健估计",
+  gbdt: "机器学习",
+  ensemble: "多算法混合",
 };
 
 export const STRATEGY_LABELS: Record<string, string> = {
   balanced: "均衡",
-  hot: "追热",
-  cold: "守冷",
-  mixed: "冷热混合",
+  hot: "偏热门",
+  cold: "偏冷门",
+  mixed: "冷热搭配",
   random: "纯随机",
+};
+
+/** 术语表里用的完整叫法（算法名 + 业界原名） */
+export const ENGINE_ALIAS: Record<string, string> = {
+  uniform: "均匀基线",
+  frequency: "频率热号",
+  omission: "遗漏回补",
+  markov: "马尔可夫",
+  bayes: "贝叶斯平滑",
+  gbdt: "梯度提升树",
+  ensemble: "多模型集成",
 };

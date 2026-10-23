@@ -6,6 +6,7 @@ import { useAuth } from "../lib/auth";
 import { Balls } from "../components/Balls";
 import { Badge, Button, Card, CardTitle, Empty, ErrorNote, NumberField, Select, Spinner, Stat, TextField, Skeleton} from "../components/ui";
 import { gameName, money, timeShort } from "../lib/format";
+import { TermHint, Glossary } from "../components/Term";
 
 export default function Tickets({ games }: { games: Game[] }) {
   const { isAuthed, user } = useAuth();
@@ -114,7 +115,7 @@ export default function Tickets({ games }: { games: Game[] }) {
       </div>
 
       <Card>
-        <CardTitle title="手动记票" sub="开奖后点「核对兑奖」会自动结算命中与奖金" />
+        <CardTitle title="手动记一注" sub="开奖后点「核对兑奖」，系统会自动算中了几注、奖金多少" />
         <div className="flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1">
             <span className="text-[11px] uppercase tracking-wider text-fog-400">彩种</span>
@@ -125,9 +126,9 @@ export default function Tickets({ games }: { games: Game[] }) {
             />
           </label>
           <TextField label="期号" value={issue} onChange={setIssue} placeholder="2026121" width="w-28" />
-          <TextField label="红球" value={red} onChange={setRed} placeholder="01 05 12 18 23 30" width="w-56" />
-          <TextField label="蓝球" value={blue} onChange={setBlue} placeholder="07" width="w-20" />
-          <NumberField label="金额" value={cost} onChange={setCost} min={1} max={10000} width="w-20" />
+          <TextField label="红球号码" value={red} onChange={setRed} placeholder="01 05 12 18 23 30" width="w-56" />
+          <TextField label="蓝球号码" value={blue} onChange={setBlue} placeholder="07" width="w-20" />
+          <NumberField label="花费(元)" value={cost} onChange={setCost} min={1} max={10000} width="w-20" />
           <TextField label="备注" value={note} onChange={setNote} placeholder="可选" width="w-40" />
           <Button variant="primary" onClick={add}>保存</Button>
         </div>
@@ -136,8 +137,8 @@ export default function Tickets({ games }: { games: Game[] }) {
 
       <Card>
         <CardTitle
-          title="我的票夹"
-          sub="本地记录，仅作统计参考"
+          title="我的彩票本"
+          sub="记录你自己买的号码，开奖后自动算中奖情况。只是记账，不是真的购彩"
           right={
             <div className="flex items-center gap-2">
               <Select
@@ -154,7 +155,7 @@ export default function Tickets({ games }: { games: Game[] }) {
         ) : list.error ? (
           <ErrorNote message={list.error} onRetry={list.reload} />
         ) : rows.length === 0 ? (
-          <Empty>还没有记录，可在上面手动记票，或在「预测」页一键存票</Empty>
+          <Empty>还没有记录。可以在上面手动记一注，或在「生成下期号码」页点「存票夹」</Empty>
         ) : (
           <>
             {/* 移动端卡片 */}
@@ -196,9 +197,9 @@ export default function Tickets({ games }: { games: Game[] }) {
               <thead>
                 <tr className="text-left text-[11px] uppercase tracking-wider text-fog-400">
                   <th className="py-2 pr-3 font-normal">彩种</th>
-                  <th className="py-2 pr-3 font-normal">期号</th>
+                  <th className="py-2 pr-3 font-normal"><TermHint k="issue">期号</TermHint></th>
                   <th className="py-2 pr-3 font-normal">号码</th>
-                  <th className="py-2 pr-3 text-right font-normal">金额</th>
+                  <th className="py-2 pr-3 text-right font-normal">花费</th>
                   <th className="py-2 pr-3 font-normal">状态</th>
                   <th className="py-2 pr-3 text-right font-normal">奖金</th>
                   <th className="py-2 pr-3 font-normal">时间</th>
@@ -232,6 +233,8 @@ export default function Tickets({ games }: { games: Game[] }) {
           </>
         )}
       </Card>
+
+      <Glossary />
     </div>
   );
 }

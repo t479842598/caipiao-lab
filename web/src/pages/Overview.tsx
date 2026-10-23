@@ -5,6 +5,7 @@ import { useGame } from "../lib/store";
 import { Balls } from "../components/Balls";
 import { Badge, Button, Card, CardTitle, Empty, ErrorNote, Spinner, Skeleton} from "../components/ui";
 import { dateShort, gameName, money, timeShort, weekdayLabel } from "../lib/format";
+import { Term, TermHint } from "../components/Term";
 
 export default function Overview({ games }: { games: Game[] }) {
   const { game, setGame } = useGame();
@@ -30,9 +31,9 @@ export default function Overview({ games }: { games: Game[] }) {
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 2xl:gap-4">
         <div className="card p-4">
-          <div className="text-[11px] uppercase tracking-wider text-fog-400">收录期数</div>
+          <div className="text-[11px] uppercase tracking-wider text-fog-400">已收录开奖</div>
           <div className="num mt-1 text-2xl font-semibold text-fog-200">{totalDraws.toLocaleString("zh-CN")}</div>
-          <div className="mt-0.5 text-[11px] text-fog-400">四大彩种全量历史</div>
+          <div className="mt-0.5 text-[11px] text-fog-400">四个彩种的历史开奖总期数</div>
         </div>
         <div className="card p-4">
           <div className="text-[11px] uppercase tracking-wider text-fog-400">彩种数</div>
@@ -111,11 +112,11 @@ export default function Overview({ games }: { games: Game[] }) {
 
       <Card>
         <CardTitle
-          title={gameName(game) + " 最近开奖"}
-          sub="点击行进入历史开奖页查看完整期次与奖级明细"
+          title={gameName(game) + " 最近几期开奖"}
+          sub="点任意一行可看这一期的完整信息（各奖项中了多少注、奖金多少）"
           right={
             <Button variant="primary" onClick={() => nav("/predict")}>
-              预测下一期
+              生成下期号码
             </Button>
           }
         />
@@ -154,11 +155,11 @@ export default function Overview({ games }: { games: Game[] }) {
             <table className="w-full text-xs">
               <thead>
                 <tr className="text-left text-[11px] uppercase tracking-wider text-fog-400">
-                  <th className="py-2 pr-3 font-normal">期号</th>
+                  <th className="py-2 pr-3 font-normal"><TermHint k="issue">期号</TermHint></th>
                   <th className="py-2 pr-3 font-normal">开奖日</th>
                   <th className="py-2 pr-3 font-normal">号码</th>
-                  <th className="hidden py-2 pr-3 text-right font-normal lg:table-cell">销量</th>
-                  <th className="hidden py-2 text-right font-normal lg:table-cell">奖池</th>
+                  <th className="hidden py-2 pr-3 text-right font-normal lg:table-cell"><TermHint k="sales">销量</TermHint></th>
+                  <th className="hidden py-2 text-right font-normal lg:table-cell"><TermHint k="pool">奖池</TermHint></th>
                 </tr>
               </thead>
               <tbody>
@@ -188,9 +189,9 @@ export default function Overview({ games }: { games: Game[] }) {
 
       <div className="grid gap-3 md:grid-cols-3 2xl:gap-4">
         {[
-          { title: "历史开奖", desc: "按期号 / 日期检索，含奖级明细与销量奖池", to: "/history" },
-          { title: "走势统计", desc: "频率、遗漏、号码走势热力图、和值跨度分布", to: "/analytics" },
-          { title: "回测验证", desc: "滚动回测，用真实历史检验模型是否真的更强", to: "/backtest" },
+          { title: "历史开奖", desc: "按年份、日期或期号查找某一期，看当时的号码和各奖项中奖情况", to: "/history" },
+          { title: "数据统计", desc: "看每个号码出了多少次、多久没出、号码组合有什么特征", to: "/analytics" },
+          { title: "算法验证", desc: "用真实历史检验：这些「预测」到底有没有比瞎猜更强", to: "/backtest" },
         ].map((item) => (
           <button key={item.to} onClick={() => nav(item.to)} className="card p-4 text-left hover:border-jade/40">
             <div className="text-sm font-semibold text-fog-200">{item.title}</div>

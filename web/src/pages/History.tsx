@@ -6,6 +6,7 @@ import { useGame } from "../lib/store";
 import { Balls } from "../components/Balls";
 import { Badge, Button, Card, CardTitle, Empty, ErrorNote, NumberField, Spinner, TextField, cx, Skeleton} from "../components/ui";
 import { dateShort, gameName, money } from "../lib/format";
+import { Term, TermHint, Glossary } from "../components/Term";
 
 export default function History({ games }: { games: Game[] }) {
   const { game } = useGame();
@@ -56,8 +57,8 @@ export default function History({ games }: { games: Game[] }) {
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_420px]">
       <Card>
         <CardTitle
-          title={gameName(game) + " 历史开奖"}
-          sub={meta ? "共 " + meta.draw_count + " 期，最早 " + meta.first_issue : undefined}
+          title={gameName(game) + " 历史开奖记录"}
+          sub={meta ? "共 " + meta.draw_count + " 期，最早一期是 " + meta.first_issue : undefined}
           right={
             list.data ? (
               <Badge tone="neutral">{"共 " + list.data.total + " 条"}</Badge>
@@ -66,10 +67,10 @@ export default function History({ games }: { games: Game[] }) {
         />
 
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <TextField label="期号" value={issueQuery} onChange={setIssueQuery} placeholder="121" width="w-24" />
+          <TextField label="期号" value={issueQuery} onChange={setIssueQuery} placeholder="如 121" width="w-24" />
           <TextField label="起" value={start} onChange={setStart} placeholder="2003-02-23" width="w-28" />
           <TextField label="止" value={end} onChange={setEnd} placeholder="2026-10-20" width="w-28" />
-          <NumberField label="每页" value={pageSize} onChange={setPageSize} min={10} max={200} width="w-16" />
+          <NumberField label="每页条数" value={pageSize} onChange={setPageSize} min={10} max={200} width="w-16" />
           <Button variant="subtle" onClick={() => { setIssueQuery(""); setStart(""); setEnd(""); setPage(1); }}>
             清空筛选
           </Button>
@@ -127,11 +128,11 @@ export default function History({ games }: { games: Game[] }) {
             <table className="w-full text-xs">
               <thead>
                 <tr className="text-left text-[11px] uppercase tracking-wider text-fog-400">
-                  <th className="py-2 pr-3 font-normal">期号</th>
-                  <th className="py-2 pr-3 font-normal">开奖日</th>
+                  <th className="py-2 pr-3 font-normal"><TermHint k="issue">期号</TermHint></th>
+                  <th className="py-2 pr-3 font-normal">开奖日期</th>
                   <th className="py-2 pr-3 font-normal">号码</th>
-                  <th className="hidden py-2 pr-3 text-right font-normal lg:table-cell">销量</th>
-                  <th className="hidden py-2 text-right font-normal lg:table-cell">奖池</th>
+                  <th className="hidden py-2 pr-3 text-right font-normal lg:table-cell"><TermHint k="sales">销量</TermHint></th>
+                  <th className="hidden py-2 text-right font-normal lg:table-cell"><TermHint k="pool">奖池</TermHint></th>
                 </tr>
               </thead>
               <tbody>
@@ -171,7 +172,7 @@ export default function History({ games }: { games: Game[] }) {
       </Card>
 
       <Card className="h-fit">
-        <CardTitle title="期次详情" sub={selected ? "期号 " + selected : "点击左侧任意一行查看"} />
+        <CardTitle title="这一期的详情" sub={selected ? "第 " + selected + " 期" : "点左边任意一行查看"} />
         {!selected ? (
           <Empty>未选择期次</Empty>
         ) : detail.loading ? (
@@ -184,6 +185,10 @@ export default function History({ games }: { games: Game[] }) {
           <DrawDetail draw={detail.data} />
         )}
       </Card>
+
+      <div className="lg:col-span-2">
+        <Glossary />
+      </div>
     </div>
   );
 }
@@ -202,20 +207,20 @@ function DrawDetail({ draw }: { draw: Draw }) {
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded-lg border border-ink-700/70 px-2.5 py-2">
-          <div className="text-[10px] uppercase tracking-wider text-fog-400">销量</div>
+          <div className="text-[10px] uppercase tracking-wider text-fog-400"><Term k="sales">销量</Term></div>
           <div className="num text-fog-200">{money(draw.sales)}</div>
         </div>
         <div className="rounded-lg border border-ink-700/70 px-2.5 py-2">
-          <div className="text-[10px] uppercase tracking-wider text-fog-400">奖池</div>
+          <div className="text-[10px] uppercase tracking-wider text-fog-400"><Term k="pool">奖池</Term></div>
           <div className="num text-fog-200">{money(draw.pool_money)}</div>
         </div>
       </div>
       {draw.prizes.length > 0 ? (
         <div>
           <div className="mb-1 flex items-center justify-between">
-            <span className="text-[11px] uppercase tracking-wider text-fog-400">奖级明细</span>
+            <span className="text-[11px] uppercase tracking-wider text-fog-400"><TermHint k="prize_grade">奖项明细</TermHint></span>
             {draw.prizes.some((p) => !p.type_num && !p.type_money) && (
-              <span className="text-[10px] text-fog-500">注数为 0 表示该档空缺</span>
+              <span className="text-[10px] text-fog-500">「空缺」= 这一档没人中，奖金滚入下期</span>
             )}
           </div>
           <table className="w-full text-[11px]">
@@ -242,8 +247,8 @@ function DrawDetail({ draw }: { draw: Draw }) {
       ) : (
         <div className="rounded-lg border border-ink-700/60 px-3 py-2 text-[11px] text-fog-400">
           {draw.game_code === "3d"
-            ? "官方源未提供 3D 的奖级明细（仅公布开奖号码与销量），可前往中彩网查看当期公告。"
-            : draw.content || "该彩种官方未公布奖级明细"}
+            ? "3D 官方只公布开奖号码和销量，不公布各奖项的中奖注数。可前往中彩网查看当期公告原文。"
+            : draw.content || "该彩种官方未公布奖项明细"}
         </div>
       )}
     </div>

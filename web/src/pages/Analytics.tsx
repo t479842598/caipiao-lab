@@ -5,6 +5,7 @@ import { useGame } from "../lib/store";
 import { EChart, axisStyle, baseGrid, tooltipStyle, useChartColors } from "../components/EChart";
 import { Badge, Button, Card, CardTitle, Empty, ErrorNote, NumberField, Spinner, cx } from "../components/ui";
 import { gameName, pct } from "../lib/format";
+import { TermHint, Glossary } from "../components/Term";
 import type { EChartsCoreOption } from "echarts/core";
 
 type Tab = "frequency" | "omission" | "trend" | "distribution" | "randomness";
@@ -14,11 +15,11 @@ type BallKind = "red" | "blue";
 const GAMES_WITH_BLUE = new Set(["ssq", "qlc"]);
 
 const TABS: { key: Tab; label: string }[] = [
-  { key: "frequency", label: "号码频率" },
-  { key: "omission", label: "遗漏分析" },
-  { key: "trend", label: "走势图" },
-  { key: "distribution", label: "形态分布" },
-  { key: "randomness", label: "随机性检验" },
+  { key: "frequency", label: "出现次数" },
+  { key: "omission", label: "多久没出" },
+  { key: "trend", label: "逐期走势" },
+  { key: "distribution", label: "号码结构" },
+  { key: "randomness", label: "是否真随机" },
 ];
 
 export default function Analytics() {
@@ -83,6 +84,8 @@ export default function Analytics() {
       )}
       {tab === "distribution" && <DistributionPanel game={game} window={window} setWindow={setWindow} />}
       {tab === "randomness" && <RandomnessPanel game={game} />}
+
+      <Glossary />
     </div>
   );
 }
@@ -164,11 +167,11 @@ function FrequencyPanel({
   return (
     <Card>
       <CardTitle
-        title={ball === "blue" ? "号码频率（蓝球/特别号）" : "号码频率"}
+        title={ball === "blue" ? "每个号码出现次数（蓝球 / 特别号）" : "每个号码出现次数"}
         sub={
           data.data
-            ? `样本 ${data.data.total_draws} 期，每期 ${data.data.per_draw_count} 个号 / 共 ${data.data.domain_size} 个号码域，理论期望 ${expectedPerNumber.toFixed(2)} 次/号`
-            : "出现次数与理论值偏差"
+            ? `统计了最近 ${data.data.total_draws} 期。每期开出 ${data.data.per_draw_count} 个号，号码池共 ${data.data.domain_size} 个 —— 如果完全随机，每个号平均应出现 ${expectedPerNumber.toFixed(1)} 次（这就是「理论期望」）`
+            : "实际出现次数与「完全随机时应出现的次数」的对比"
         }
         right={<NumberField label="统计期数" value={window} onChange={setWindow} min={10} max={2000} width="w-24" />}
       />
@@ -196,10 +199,14 @@ function FrequencyPanel({
               <thead>
                 <tr className="text-left text-[11px] uppercase tracking-wider text-fog-400">
                   <th className="py-1.5 pr-3 font-normal">号码</th>
-                  <th className="py-1.5 pr-3 text-right font-normal">出现</th>
-                  <th className="py-1.5 pr-3 text-right font-normal">频率</th>
-                  <th className="py-1.5 pr-3 text-right font-normal">期望</th>
-                  <th className="py-1.5 text-right font-normal">偏差</th>
+                  <th className="py-1.5 pr-3 text-right font-normal">出现次数</th>
+                  <th className="py-1.5 pr-3 text-right font-normal">占比</th>
+                  <th className="py-1.5 pr-3 text-right font-normal">
+                    <TermHint k="expected">理论期望</TermHint>
+                  </th>
+                  <th className="py-1.5 text-right font-normal">
+                    <TermHint k="deviation">偏差</TermHint>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -246,8 +253,8 @@ function OmissionPanel({
       xAxis: { type: "category", data: items.map((i) => String(i.n)), ...axisStyle(c) },
       yAxis: { type: "value", name: "期数", nameTextStyle: { color: c.label, fontSize: 10 }, ...axisStyle(c) },
       series: [
-        { type: "bar", name: "当前遗漏", data: items.map((i) => i.current), itemStyle: { color: c.amber, borderRadius: [3, 3, 0, 0] } },
-        { type: "bar", name: "历史最大", data: items.map((i) => i.max), itemStyle: { color: c.axis, borderRadius: [3, 3, 0, 0] } },
+        { type: "bar", name: "已多少期没出", data: items.map((i) => i.current), itemStyle: { color: c.amber, borderRadius: [3, 3, 0, 0] } },
+        { type: "bar", name: "历史最长间隔", data: items.map((i) => i.max), itemStyle: { color: c.axis, borderRadius: [3, 3, 0, 0] } },
       ],
     };
   }, [data.data, c]);
@@ -255,8 +262,8 @@ function OmissionPanel({
   return (
     <Card>
       <CardTitle
-        title="遗漏分析"
-        sub="当前遗漏期数 vs 历史最大遗漏，遗漏越久不代表越容易开出"
+        title="每个号码多久没出现了"
+        sub="「当前遗漏」= 距上次开出过了几期。重要：久没出不代表马上会出，每期开奖互相独立"
         right={<NumberField label="只看前 N" value={limit} onChange={setLimit} min={0} max={80} width="w-16" />}
       />
       {data.loading ? <Spinner /> : data.error ? <ErrorNote message={data.error} onRetry={data.reload} /> : (
@@ -281,9 +288,11 @@ function OmissionPanel({
               <thead>
                 <tr className="text-left text-[11px] uppercase tracking-wider text-fog-400">
                   <th className="py-1.5 pr-3 font-normal">号码</th>
-                  <th className="py-1.5 pr-3 text-right font-normal">当前遗漏</th>
-                  <th className="py-1.5 pr-3 text-right font-normal">历史最大</th>
-                  <th className="py-1.5 pr-3 text-right font-normal">平均遗漏</th>
+                  <th className="py-1.5 pr-3 text-right font-normal">
+                    <TermHint k="omission">当前遗漏</TermHint>
+                  </th>
+                  <th className="py-1.5 pr-3 text-right font-normal">历史最长</th>
+                  <th className="py-1.5 pr-3 text-right font-normal">平均间隔</th>
                   <th className="py-1.5 text-right font-normal">上次开出</th>
                 </tr>
               </thead>
@@ -359,7 +368,7 @@ function TrendPanel({
         ...tooltipStyle(c),
         formatter: (p: unknown) => {
           const q = p as { value: [number, number, number] };
-          return "号码 " + domain[q.value[0]] + "<br/>期号 " + issues[q.value[1]] + "<br/>遗漏 " + q.value[2] + " 期";
+          return "号码 " + domain[q.value[0]] + "<br/>期号 " + issues[q.value[1]] + "<br/>已 " + q.value[2] + " 期没出";
         },
       },
       xAxis: { type: "category", data: domain.map(String), ...axisStyle(c) },
@@ -374,15 +383,15 @@ function TrendPanel({
   return (
     <Card>
       <CardTitle
-        title="号码走势"
-        sub="上方为每期开出位置，下方为逐期遗漏热力图"
+        title="逐期走势"
+        sub="上图每个点代表那一期这个号开出了；下图颜色越亮表示这个号已经越久没出现"
         right={<NumberField label="期数" value={periods} onChange={setPeriods} min={10} max={200} width="w-20" />}
       />
       {data.loading ? <Spinner /> : data.error ? <ErrorNote message={data.error} onRetry={data.reload} /> : !data.data ? <Empty /> : (
         <>
           <div className="mb-1 text-[11px] text-fog-400">开出走势</div>
           <EChart option={option} height={chartH} />
-          <div className="mb-1 mt-3 text-[11px] text-fog-400">遗漏热力</div>
+          <div className="mb-1 mt-3 text-[11px] text-fog-400">多久没出（越亮越久）</div>
           <EChart option={omissionOption} height={chartH} />
         </>
       )}
@@ -407,8 +416,8 @@ function DistributionPanel({ game, window, setWindow }: { game: string; window: 
   return (
     <Card>
       <CardTitle
-        title="形态分布"
-        sub="和值、跨度、奇偶比、大小比等组合形态的历史分布"
+        title="号码组合的结构"
+        sub="统计每期号码的「总和」「首尾差距」「奇数偶数比例」等特征，看历史上哪些结构最常见"
         right={<NumberField label="统计期数" value={window} onChange={setWindow} min={20} max={2000} width="w-24" />}
       />
       {data.loading ? <Spinner /> : data.error ? <ErrorNote message={data.error} onRetry={data.reload} /> : !data.data ? <Empty /> : (
@@ -416,10 +425,10 @@ function DistributionPanel({ game, window, setWindow }: { game: string; window: 
           {s && (
             <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4">
               {[
-                { label: "和值均值", v: s.sum.mean, hint: "标准差 " + s.sum.std },
-                { label: "跨度均值", v: s.span.mean, hint: "标准差 " + s.span.std },
-                { label: "奇数均值", v: s.odd.mean, hint: "满分 6" },
-                { label: "大号均值", v: s.big.mean, hint: "满分 6" },
+                { label: "号码总和平均", v: s.sum.mean, hint: "波动 " + s.sum.std },
+                { label: "首尾差距平均", v: s.span.mean, hint: "波动 " + s.span.std },
+                { label: "奇数个数平均", v: s.odd.mean, hint: "共 6 个号" },
+                { label: "大号个数平均", v: s.big.mean, hint: "共 6 个号" },
               ].map((it) => (
                 <div key={it.label} className="rounded-xl border border-ink-700/70 bg-ink-900/40 px-3 py-2">
                   <div className="text-[10px] uppercase tracking-wider text-fog-400">{it.label}</div>
@@ -431,27 +440,27 @@ function DistributionPanel({ game, window, setWindow }: { game: string; window: 
           )}
           <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
             <div>
-              <div className="mb-1 text-[11px] text-fog-400">和值分布</div>
+              <div className="mb-1 text-[11px] text-fog-400">号码总和分布</div>
               <EChart option={histOption(data.data.sum_hist, c.jade)} height={200} />
             </div>
             <div>
-              <div className="mb-1 text-[11px] text-fog-400">跨度分布</div>
+              <div className="mb-1 text-[11px] text-fog-400">首尾差距分布</div>
               <EChart option={histOption(data.data.span_hist, c.blue)} height={200} />
             </div>
             <div>
-              <div className="mb-1 text-[11px] text-fog-400">奇偶比</div>
+              <div className="mb-1 text-[11px] text-fog-400">奇数偶数比例</div>
               <EChart option={histOption(data.data.odd_even_hist, c.amber)} height={200} />
             </div>
             <div>
-              <div className="mb-1 text-[11px] text-fog-400">大小比</div>
+              <div className="mb-1 text-[11px] text-fog-400">大号小号比例</div>
               <EChart option={histOption(data.data.big_small_hist, c.red)} height={200} />
             </div>
             <div>
-              <div className="mb-1 text-[11px] text-fog-400">三区比</div>
+              <div className="mb-1 text-[11px] text-fog-400">三段号码分布</div>
               <EChart option={histOption(data.data.zone_hist, c.jade)} height={200} />
             </div>
             <div>
-              <div className="mb-1 text-[11px] text-fog-400">连号个数</div>
+              <div className="mb-1 text-[11px] text-fog-400">连号出现次数</div>
               <EChart option={histOption(data.data.consecutive_hist, c.blue)} height={200} />
             </div>
           </div>
@@ -467,26 +476,29 @@ function RandomnessPanel({ game }: { game: string }) {
 
   return (
     <Card>
-      <CardTitle title="随机性检验" sub="用卡方、游程、自相关检验历史号码是否符合独立均匀分布" />
+      <CardTitle
+        title="开奖到底是不是真随机？"
+        sub="用三种统计方法检验历史数据。如果结论是「符合随机」，那任何预测模型都不该有真实预测力 —— 这一页就是诚实地展示这一点"
+      />
       {data.loading ? <Spinner /> : data.error ? <ErrorNote message={data.error} onRetry={data.reload} /> : !d ? <Empty /> : (
         <div className="flex flex-col gap-3">
           <div className="rounded-xl border border-jade/25 bg-jade/8 px-3 py-2.5 text-xs text-jade">{d.verdict}</div>
           <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
             <div className="rounded-xl border border-ink-700/70 bg-ink-900/40 p-3 text-xs">
-              <div className="mb-1.5 text-[11px] uppercase tracking-wider text-fog-400">卡方拟合检验</div>
+              <div className="mb-1.5 text-[11px] uppercase tracking-wider text-fog-400">卡方检验（号码频率是否全一样）</div>
               <div className="num text-fog-200">χ² = {d.chi_square.statistic}（自由度 {d.chi_square.dof}）</div>
               <div className="num mt-1 text-fog-400">p 值 = {String(d.chi_square.p_value)}</div>
               <div className="num mt-1 text-fog-400">理论期望 {d.chi_square.uniform_expected} 次/号 · 样本 {d.draws} 期</div>
             </div>
             <div className="rounded-xl border border-ink-700/70 bg-ink-900/40 p-3 text-xs">
-              <div className="mb-1.5 text-[11px] uppercase tracking-wider text-fog-400">游程检验</div>
+              <div className="mb-1.5 text-[11px] uppercase tracking-wider text-fog-400">游程检验（有没有连续偏高偏低）</div>
               <div className="num text-fog-200">z = {d.runs_test.z}</div>
               <div className="num mt-1 text-fog-400">p 值 = {String(d.runs_test.p_value)}</div>
               <div className="mt-1 text-fog-400">序列是否存在连续偏倚</div>
             </div>
           </div>
           <div>
-            <div className="mb-1.5 text-[11px] uppercase tracking-wider text-fog-400">滞后自相关</div>
+            <div className="mb-1.5 text-[11px] uppercase tracking-wider text-fog-400">前后期关联度（这期和前面几期有关吗）</div>
             <div className="flex flex-wrap gap-2">
               {d.autocorrelation.map((a) => (
                 <div key={String(a.lag)} className="rounded-lg border border-ink-700/70 px-2.5 py-1.5 text-[11px] text-fog-400">
