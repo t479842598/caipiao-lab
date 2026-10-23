@@ -237,9 +237,16 @@ def randomness_report(data: BallData) -> dict[str, Any]:
 
     biased = p < 0.01
     verdict_parts = []
-    verdict_parts.append(f"卡方 p={p:.4f}，" + ("各号频率显著不均" if biased else "各号频率未见显著偏差"))
-    verdict_parts.append(f"游程 z={z_runs:.2f}，" + ("序列存在趋势" if abs(z_runs) > 2.58 else "序列无显著趋势"))
-    verdict_parts.append("滞后自相关均在噪声范围内" if all(abs(a["corr"]) < 0.1 for a in autocorr) else "存在弱自相关")
+    verdict_parts.append(
+        f"各号码出现次数" + ("明显不均（可能有偏差）" if biased else "基本均匀，看不出偏差")
+    )
+    verdict_parts.append(
+        "前后期之间" + ("存在趋势" if abs(z_runs) > 2.58 else "看不出趋势")
+    )
+    verdict_parts.append(
+        "历史数据之间没有可用的关联" if all(abs(a["corr"]) < 0.1 for a in autocorr)
+        else "存在微弱的前后期关联"
+    )
 
     return {
         "game": data.game,
